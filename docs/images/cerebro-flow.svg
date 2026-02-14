@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 120" width="900" height="120">
+  <defs>
+    <style>
+      @keyframes activate1 {
+        0%, 20%   { fill: #2d1b69; stroke: #a855f7; }
+        25%, 100% { fill: #1a1a2e; stroke: #4c1d95; }
+      }
+      @keyframes activate2 {
+        0%, 24%   { fill: #1a1a2e; stroke: #4c1d95; }
+        25%, 45%  { fill: #2d1b69; stroke: #a855f7; }
+        50%, 100% { fill: #1a1a2e; stroke: #4c1d95; }
+      }
+      @keyframes activate3 {
+        0%, 49%   { fill: #1a1a2e; stroke: #4c1d95; }
+        50%, 70%  { fill: #2d1b69; stroke: #a855f7; }
+        75%, 100% { fill: #1a1a2e; stroke: #4c1d95; }
+      }
+      @keyframes activate4 {
+        0%, 74%   { fill: #1a1a2e; stroke: #4c1d95; }
+        75%, 95%  { fill: #2d1b69; stroke: #a855f7; }
+        100%      { fill: #1a1a2e; stroke: #4c1d95; }
+      }
+      @keyframes textOn1 {
+        0%, 20%   { fill: #e9d5ff; }
+        25%, 100% { fill: #6b7280; }
+      }
+      @keyframes textOn2 {
+        0%, 24%   { fill: #6b7280; }
+        25%, 45%  { fill: #e9d5ff; }
+        50%, 100% { fill: #6b7280; }
+      }
+      @keyframes textOn3 {
+        0%, 49%   { fill: #6b7280; }
+        50%, 70%  { fill: #e9d5ff; }
+        75%, 100% { fill: #6b7280; }
+      }
+      @keyframes textOn4 {
+        0%, 74%   { fill: #6b7280; }
+        75%, 95%  { fill: #e9d5ff; }
+        100%      { fill: #6b7280; }
+      }
+      .stage1 { animation: activate1 8s ease-in-out infinite; stroke-width: 2; }
+      .stage2 { animation: activate2 8s ease-in-out infinite; stroke-width: 2; }
+      .stage3 { animation: activate3 8s ease-in-out infinite; stroke-width: 2; }
+      .stage4 { animation: activate4 8s ease-in-out infinite; stroke-width: 2; }
+      .t1 { animation: textOn1 8s ease-in-out infinite; }
+      .t2 { animation: textOn2 8s ease-in-out infinite; }
+      .t3 { animation: textOn3 8s ease-in-out infinite; }
+      .t4 { animation: textOn4 8s ease-in-out infinite; }
+      .arrow { fill: #4c1d95; opacity: 0.6; }
+      text { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; font-weight: 600; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="120" rx="12" fill="#0a0a1a"/>
+
+  <!-- Stage 1: Memory -->
+  <rect class="stage1" x="40" y="30" width="180" height="60" rx="12"/>
+  <text class="t1" x="130" y="66" text-anchor="middle">Memory</text>
+
+  <!-- Arrow 1 -->
+  <polygon class="arrow" points="240,55 260,60 240,65"/>
+
+  <!-- Stage 2: Learning -->
+  <rect class="stage2" x="270" y="30" width="180" height="60" rx="12"/>
+  <text class="t2" x="360" y="66" text-anchor="middle">Learning</text>
+
+  <!-- Arrow 2 -->
+  <polygon class="arrow" points="470,55 490,60 470,65"/>
+
+  <!-- Stage 3: Reasoning -->
+  <rect class="stage3" x="500" y="30" width="180" height="60" rx="12"/>
+  <text class="t3" x="590" y="66" text-anchor="middle">Reasoning</text>
+
+  <!-- Arrow 3 -->
+  <polygon class="arrow" points="700,55 720,60 700,65"/>
+
+  <!-- Stage 4: Prediction -->
+  <rect class="stage4" x="730" y="30" width="140" height="60" rx="12"/>
+  <text class="t4" x="800" y="66" text-anchor="middle">Prediction</text>
+</svg>

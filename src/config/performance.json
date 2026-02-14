@@ -1,0 +1,54 @@
+{
+  "embedding": {
+    "pre_load_model": true,
+    "use_background_service": false,
+    "model_name": "all-MiniLM-L6-v2",
+    "batch_size": 32,
+    "timeout_seconds": 30,
+    "enable_progress_bar": false
+  },
+  "faiss": {
+    "incremental_updates": true,
+    "index_type": "IndexFlatIP",
+    "rebuild_threshold": 10000,
+    "use_ivf_for_large_datasets": true,
+    "ivf_threshold": 1000,
+    "n_probe": 10
+  },
+  "cache": {
+    "enable_query_cache": false,
+    "cache_ttl_seconds": 300,
+    "max_cache_size_mb": 100
+  },
+  "optimization": {
+    "use_quantization": false,
+    "use_gpu": false,
+    "num_threads": 4,
+    "normalize_vectors": true
+  },
+  "nas": {
+    "timeout_seconds": 10,
+    "max_workers": 4,
+    "lazy_directory_creation": true
+  },
+  "performance_targets": {
+    "startup_time_seconds": 10,
+    "first_search_ms": 500,
+    "incremental_save_seconds": 1,
+    "search_latency_ms": 300
+  },
+  "notes": {
+    "agent_7_optimizations": [
+      "Pre-load embedding model at startup",
+      "Incremental FAISS index updates",
+      "Background embedding service (optional)",
+      "Timeout protection for all NAS operations"
+    ],
+    "compatibility": {
+      "embedding_model": "all-MiniLM-L6-v2",
+      "vector_dimensions": 384,
+      "index_format": "FAISS",
+      "breaking_changes": false
+    }
+  }
+}

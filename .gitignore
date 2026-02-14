@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# AI/ML Models
+*.bin
+*.onnx
+*.pt
+*.pth
+*.safetensors
+*.gguf
+
+# Cerebro Data (user-specific)
+data/
+*.faiss
+*.index
+embeddings/
+conversations/
+cache/
+knowledge_base/
+learnings/
+corrections/
+patterns/
+personality/
+
+# Logs
+*.log
+logs/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.ruff_cache/
+
+# Misc
+*.bak
+*.tmp

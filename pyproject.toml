@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cerebro-ai"
+version = "0.1.0"
+description = "A cognitive memory system for AI agents — 49 MCP tools for persistent memory, causal reasoning, and predictive intelligence"
+readme = "README.md"
+license = "AGPL-3.0-only"
+requires-python = ">=3.10"
+authors = [
+    { name = "Professor-Low" },
+]
+keywords = ["ai", "memory", "mcp", "claude", "cognitive", "reasoning", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "mcp>=1.25.0",
+    "anyio>=4.0.0",
+    "numpy>=2.0.0",
+    "pydantic>=2.5.0",
+    "python-dateutil>=2.8.0",
+]
+
+[project.optional-dependencies]
+embeddings = [
+    "sentence-transformers>=5.0.0",
+    "faiss-cpu>=1.13.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+]
+gpu = [
+    "faiss-gpu>=1.7.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/Professor-Low/Cerebro"
+Documentation = "https://github.com/Professor-Low/Cerebro/tree/main/docs"
+Repository = "https://github.com/Professor-Low/Cerebro"
+Issues = "https://github.com/Professor-Low/Cerebro/issues"
+
+[project.scripts]
+cerebro = "src.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

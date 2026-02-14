@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  cerebro:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.memory
+    volumes:
+      - cerebro_data:/data
+    environment:
+      - CEREBRO_DATA_DIR=/data
+      - REDIS_URL=redis://redis:6379/0
+      - CEREBRO_LLM_URL=${CEREBRO_LLM_URL:-}
+      - CEREBRO_LLM_MODEL=${CEREBRO_LLM_MODEL:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+  cerebro_data:

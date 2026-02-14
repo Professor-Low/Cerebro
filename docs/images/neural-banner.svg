@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200" width="900" height="200">
+  <defs>
+    <style>
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.6; }
+        50% { transform: scale(1.5); opacity: 1; }
+      }
+      @keyframes glow {
+        0%, 100% { stroke-opacity: 0.15; }
+        50% { stroke-opacity: 0.55; }
+      }
+      .node {
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+      .n-bright { fill: #a855f7; animation: pulse 2.5s ease-in-out infinite; }
+      .n-med    { fill: #7c3aed; animation: pulse 3s ease-in-out infinite; }
+      .n-dim    { fill: #6d28d9; animation: pulse 3.5s ease-in-out infinite; }
+      .link     { stroke: #4c1d95; stroke-width: 1; fill: none; opacity: 0.3; }
+      .link-glow { stroke: #7c3aed; stroke-width: 1.2; fill: none; animation: glow 4s ease-in-out infinite; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="200" rx="12" fill="#0a0a1a"/>
+
+  <!-- Connections -->
+  <line class="link" x1="80" y1="60" x2="180" y2="100"/>
+  <line class="link-glow" x1="180" y1="100" x2="290" y2="55" style="animation-delay: 0.5s"/>
+  <line class="link" x1="290" y1="55" x2="400" y2="90"/>
+  <line class="link" x1="400" y1="90" x2="520" y2="60"/>
+  <line class="link-glow" x1="520" y1="60" x2="640" y2="100" style="animation-delay: 1.2s"/>
+  <line class="link" x1="640" y1="100" x2="750" y2="70"/>
+  <line class="link" x1="750" y1="70" x2="840" y2="110"/>
+  <line class="link" x1="80" y1="60" x2="150" y2="150"/>
+  <line class="link-glow" x1="150" y1="150" x2="290" y2="140" style="animation-delay: 2s"/>
+  <line class="link" x1="290" y1="140" x2="400" y2="90"/>
+  <line class="link" x1="400" y1="90" x2="460" y2="155"/>
+  <line class="link" x1="460" y1="155" x2="580" y2="145"/>
+  <line class="link-glow" x1="580" y1="145" x2="640" y2="100" style="animation-delay: 0.8s"/>
+  <line class="link" x1="640" y1="100" x2="780" y2="150"/>
+  <line class="link" x1="780" y1="150" x2="840" y2="110"/>
+  <line class="link" x1="120" y1="40" x2="240" y2="35"/>
+  <line class="link-glow" x1="240" y1="35" x2="350" y2="50" style="animation-delay: 1.5s"/>
+  <line class="link" x1="350" y1="50" x2="480" y2="40"/>
+  <line class="link" x1="480" y1="40" x2="600" y2="50"/>
+  <line class="link-glow" x1="600" y1="50" x2="720" y2="35" style="animation-delay: 3s"/>
+  <line class="link" x1="720" y1="35" x2="830" y2="50"/>
+  <line class="link" x1="180" y1="100" x2="150" y2="150"/>
+  <line class="link" x1="290" y1="55" x2="290" y2="140"/>
+  <line class="link-glow" x1="520" y1="60" x2="460" y2="155" style="animation-delay: 2.5s"/>
+  <line class="link" x1="750" y1="70" x2="780" y2="150"/>
+  <line class="link" x1="120" y1="40" x2="80" y2="60"/>
+  <line class="link" x1="480" y1="40" x2="520" y2="60"/>
+  <line class="link-glow" x1="600" y1="50" x2="640" y2="100" style="animation-delay: 1.8s"/>
+  <line class="link" x1="350" y1="50" x2="400" y2="90"/>
+
+  <!-- Bright purple nodes -->
+  <circle class="node n-bright" cx="180" cy="100" r="7" style="animation-delay: 0s"/>
+  <circle class="node n-bright" cx="400" cy="90" r="8" style="animation-delay: 0.8s"/>
+  <circle class="node n-bright" cx="640" cy="100" r="7" style="animation-delay: 1.6s"/>
+  <circle class="node n-bright" cx="460" cy="155" r="6" style="animation-delay: 2.2s"/>
+  <circle class="node n-bright" cx="290" cy="55" r="7" style="animation-delay: 0.4s"/>
+
+  <!-- Medium violet nodes -->
+  <circle class="node n-med" cx="80" cy="60" r="5" style="animation-delay: 0.3s"/>
+  <circle class="node n-med" cx="150" cy="150" r="6" style="animation-delay: 1.1s"/>
+  <circle class="node n-med" cx="520" cy="60" r="6" style="animation-delay: 1.9s"/>
+  <circle class="node n-med" cx="580" cy="145" r="5" style="animation-delay: 0.6s"/>
+  <circle class="node n-med" cx="750" cy="70" r="6" style="animation-delay: 2.4s"/>
+  <circle class="node n-med" cx="350" cy="50" r="5" style="animation-delay: 1.3s"/>
+  <circle class="node n-med" cx="600" cy="50" r="5" style="animation-delay: 0.9s"/>
+  <circle class="node n-med" cx="840" cy="110" r="6" style="animation-delay: 2.1s"/>
+
+  <!-- Dim nodes -->
+  <circle class="node n-dim" cx="120" cy="40" r="4" style="animation-delay: 0.5s"/>
+  <circle class="node n-dim" cx="240" cy="35" r="4" style="animation-delay: 1.7s"/>
+  <circle class="node n-dim" cx="290" cy="140" r="5" style="animation-delay: 2.3s"/>
+  <circle class="node n-dim" cx="480" cy="40" r="4" style="animation-delay: 0.2s"/>
+  <circle class="node n-dim" cx="720" cy="35" r="4" style="animation-delay: 1.5s"/>
+  <circle class="node n-dim" cx="780" cy="150" r="5" style="animation-delay: 2.8s"/>
+  <circle class="node n-dim" cx="830" cy="50" r="4" style="animation-delay: 1.0s"/>
+</svg>
