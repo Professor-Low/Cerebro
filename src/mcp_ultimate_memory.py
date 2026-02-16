@@ -16,6 +16,16 @@ SANITIZATION:
 - Special characters escaped
 """
 import os
+import sys
+
+# ============================================================
+# CRITICAL: Redirect stdout to stderr BEFORE any imports.
+# The MCP protocol uses stdout for JSON-RPC messages.
+# Any print() to stdout corrupts the protocol stream and
+# causes Claude Code MCP calls to hang indefinitely.
+# ============================================================
+_original_stdout = sys.stdout  # Save for MCP protocol
+sys.stdout = sys.stderr        # All print() now goes to stderr
 
 # Embeddings enabled — uses DGX Spark for embedding generation (lazy-loaded, won't block startup)
 os.environ.setdefault('ENABLE_EMBEDDINGS', '1')
@@ -28,7 +38,6 @@ import concurrent.futures
 import datetime as dt
 import json
 import re
-import sys
 import uuid
 from functools import partial
 from pathlib import Path
@@ -6895,8 +6904,17 @@ async def main():
     # Create the init event now that we have an event loop
     _init_event = asyncio.Event()
 
+    # Use the ORIGINAL stdout (saved before redirect) for MCP protocol.
+    # sys.stdout was redirected to stderr early in module load to prevent
+    # print() from corrupting the MCP JSON-RPC stream.
+    from io import TextIOWrapper
+    import anyio
+    _mcp_stdout = anyio.wrap_file(
+        TextIOWrapper(_original_stdout.buffer, encoding="utf-8")
+    )
+
     # Start the server FIRST so Claude Code can connect immediately
-    async with stdio_server() as (read_stream, write_stream):
+    async with stdio_server(stdout=_mcp_stdout) as (read_stream, write_stream):
         # Kick off background initialization (non-blocking)
         asyncio.create_task(_background_init())
 
