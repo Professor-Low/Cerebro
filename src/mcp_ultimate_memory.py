@@ -1426,7 +1426,7 @@ async def list_tools():
                     },
                     "actor": {
                         "type": "string",
-                        "description": "Actor filter (for query_episodic, e.g., 'Professor', 'Claude')"
+                        "description": "Actor filter (for query_episodic, e.g., 'User', 'Claude')"
                     },
                     "emotion": {
                         "type": "string",
@@ -2439,7 +2439,7 @@ async def call_tool(name: str, arguments: dict):
                 def do_evolution():
                     # Fast NAS check - fail fast if NAS unavailable
                     if not is_nas_reachable(timeout=2.0):
-                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and Z: drive is mounted"}
+                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and network drive is mounted"}
                     tracker = ProjectEvolutionTracker()
                     project_id = arguments.get("project_id")
 
@@ -2529,7 +2529,7 @@ async def call_tool(name: str, arguments: dict):
                 def do_confidence():
                     # Fast NAS check - fail fast if NAS unavailable
                     if not is_nas_reachable(timeout=2.0):
-                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and Z: drive is mounted"}
+                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and network drive is mounted"}
                     conf_tracker = ConfidenceTracker()
                     prov_tracker = ProvenanceTracker()
 
@@ -2704,7 +2704,7 @@ async def call_tool(name: str, arguments: dict):
             action = arguments.get("action", "search")
             # Fast NAS check - fail fast if NAS unavailable
             if not is_nas_reachable(timeout=2.0):
-                return [TextContent(type="text", text=safe_json_dumps({"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and Z: drive is mounted"}))]
+                return [TextContent(type="text", text=safe_json_dumps({"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and network drive is mounted"}))]
             try:
                 from code_indexer import CodeIndexer
 
@@ -3105,7 +3105,7 @@ async def call_tool(name: str, arguments: dict):
                             event=event,
                             outcome=arguments.get("outcome"),
                             emotional_state=arguments.get("emotional_state"),
-                            actors=["Professor", "Claude"],
+                            actors=["User", "Claude"],
                             conversation_id=arguments.get("conversation_id")
                         )
                         episode_id = episodic.save_episode(episode)
@@ -4440,7 +4440,7 @@ async def call_tool(name: str, arguments: dict):
                 def do_images():
                     # Fast NAS check - fail fast if NAS unavailable
                     if not is_nas_reachable(timeout=2.0):
-                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and Z: drive is mounted"}
+                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and network drive is mounted"}
                     processor = ImageProcessor()
                     if action == "save":
                         return processor.save_screenshot(
@@ -4496,7 +4496,7 @@ async def call_tool(name: str, arguments: dict):
                 def do_session():
                     # Fast NAS check - fail fast if NAS unavailable
                     if not is_nas_reachable(timeout=2.0):
-                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and Z: drive is mounted"}
+                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and network drive is mounted"}
                     if action == "thread":
                         session_id = arguments.get("session_id")
                         if not session_id:
@@ -4542,7 +4542,7 @@ async def call_tool(name: str, arguments: dict):
                     from device_registry import get_device_registry as get_registry
                     # Fast NAS check - fail fast if NAS unavailable
                     if not is_nas_reachable(timeout=2.0):
-                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and Z: drive is mounted"}
+                        return {"error": "NAS not reachable", "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and network drive is mounted"}
                     registry = get_registry()
                     if action == "all":
                         devices = registry.get_all_devices()
@@ -4889,7 +4889,7 @@ async def call_tool(name: str, arguments: dict):
             def do_get_profile():
                 # Fast NAS check - fail fast if NAS unavailable
                 if not is_nas_reachable(timeout=2.0):
-                    return {"error": "NAS not reachable", "profile_exists": False, "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and Z: drive is mounted"}
+                    return {"error": "NAS not reachable", "profile_exists": False, "nas_status": "unavailable", "suggestion": "Check if NAS is powered on and network drive is mounted"}
                 try:
                     # Load user profile from NAS
                     prof_path = Path(memory.base_path) / "user" / "profile.json"

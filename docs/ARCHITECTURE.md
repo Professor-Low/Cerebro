@@ -41,7 +41,7 @@ flowchart TB
     end
 
     subgraph Storage["Storage Layer"]
-        FAISS["FAISS Vector Index\n(384-dim, all-MiniLM-L6-v2)"]
+        FAISS["FAISS Vector Index\n(768-dim, all-mpnet-base-v2)"]
         FS["File Storage\n(JSON hierarchical)"]
         KB["Knowledge Base\n(Facts + Confidence)"]
         EMB["Sentence-Transformer\nEmbeddings"]
@@ -103,7 +103,7 @@ The Memory Server is the cognitive backbone of Cerebro. It exposes 49 tools via 
 
 #### FAISS Vector Search
 
-- **Model**: `all-MiniLM-L6-v2` (384-dimensional embeddings)
+- **Model**: `all-mpnet-base-v2` (768-dimensional embeddings)
 - **Index type**: FAISS IndexFlatIP (inner product similarity)
 - **Chunking**: Conversations split into semantic chunks for granular retrieval
 - **Hybrid search**: Combines FAISS semantic similarity with BM25 keyword matching
@@ -307,7 +307,7 @@ sequenceDiagram
 ### Directory Structure
 
 ```
-Z:\AI_MEMORY\                          # Root storage (NAS or local)
+~/.cerebro/data/                          # Root storage (default location)
 ├── quick_facts.json                   # Instant recall (auto-synced)
 ├── conversations/                     # Episodic memory
 │   └── YYYY/MM/DD/                    # Hierarchical by date
@@ -323,7 +323,7 @@ Z:\AI_MEMORY\                          # Root storage (NAS or local)
 │   ├── failures.json                  # Failed approaches
 │   └── antipatterns.json             # What NOT to do
 ├── embeddings/                        # Vector search
-│   ├── faiss_index.bin               # FAISS index (384-dim)
+│   ├── faiss_index.bin               # FAISS index (768-dim)
 │   └── metadata.json                 # Chunk-to-embedding mapping
 ├── sessions/                          # Working memory
 │   ├── active/                        # Current session state
@@ -349,10 +349,10 @@ Z:\AI_MEMORY\                          # Root storage (NAS or local)
 Text Input
     │
     ▼
-Sentence-Transformer (all-MiniLM-L6-v2)
+Sentence-Transformer (all-mpnet-base-v2)
     │
     ▼
-384-dimensional vector
+768-dimensional vector
     │
     ▼
 FAISS IndexFlatIP
@@ -401,7 +401,7 @@ Cerebro's Memory Server communicates via the Model Context Protocol (MCP):
 The Backend communicates with the Frontend via Socket.IO:
 
 - **Namespace**: Default (`/`)
-- **Room**: `professor` (authenticated user)
+- **Room**: Authenticated user room
 - **Events**: Real-time narration, browser steps, OODA updates, chat
 
 ### HTTP API

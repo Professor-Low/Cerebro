@@ -279,7 +279,7 @@ class HealthChecker:
             if model_available:
                 self.results['embeddings'] = {
                     'status': 'healthy',
-                    'model': 'all-MiniLM-L6-v2',
+                    'model': 'all-mpnet-base-v2',
                     'cached': engine._model_cache is not None
                 }
             else:

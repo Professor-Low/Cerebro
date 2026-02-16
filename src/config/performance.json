@@ -2,7 +2,7 @@
   "embedding": {
     "pre_load_model": true,
     "use_background_service": false,
-    "model_name": "all-MiniLM-L6-v2",
+    "model_name": "all-mpnet-base-v2",
     "batch_size": 32,
     "timeout_seconds": 30,
     "enable_progress_bar": false
@@ -45,8 +45,8 @@
       "Timeout protection for all NAS operations"
     ],
     "compatibility": {
-      "embedding_model": "all-MiniLM-L6-v2",
-      "vector_dimensions": 384,
+      "embedding_model": "all-mpnet-base-v2",
+      "vector_dimensions": 768,
       "index_format": "FAISS",
       "breaking_changes": false
     }

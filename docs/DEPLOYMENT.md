@@ -127,8 +127,8 @@ CEREBRO_NAS_MOUNT_POINT=Z:                 # Windows
 # ──────────────────────────────────────────
 # Embeddings
 # ──────────────────────────────────────────
-CEREBRO_EMBEDDING_MODEL=all-MiniLM-L6-v2   # Sentence-transformer model
-CEREBRO_EMBEDDING_DIM=384                   # Must match model output
+CEREBRO_EMBEDDING_MODEL=all-mpnet-base-v2   # Sentence-transformer model
+CEREBRO_EMBEDDING_DIM=768                   # Must match model output
 CEREBRO_EMBEDDING_DEVICE=cpu               # cpu | cuda
 CEREBRO_FAISS_INDEX_TYPE=flat              # flat | ivf | hnsw
 
@@ -376,9 +376,9 @@ Output:
 ```
 Cerebro Health Check
 ====================
-Storage:      OK (Z:\AI_MEMORY, 2.1 TB free)
-FAISS Index:  OK (384-dim, 15,234 vectors)
-Embeddings:   OK (all-MiniLM-L6-v2 loaded)
+Storage:      OK (~/.cerebro/data, 2.1 TB free)
+FAISS Index:  OK (768-dim, 15,234 vectors)
+Embeddings:   OK (all-mpnet-base-v2 loaded)
 Knowledge:    OK (8,456 facts, avg confidence 0.78)
 Learnings:    OK (342 solutions, 89 antipatterns)
 MCP Server:   OK (49 tools registered)

@@ -25,14 +25,6 @@
 
 ---
 
-<div align="center">
-  <img src="docs/images/hero-home.png" alt="Cerebro Dashboard" width="900" />
-  <br/>
-  <sub>This is what your AI's brain looks like. <a href="https://cerebro.life">Cerebro Pro</a></sub>
-</div>
-
----
-
 ## Why Cerebro?
 
 <table>
@@ -141,37 +133,6 @@ The MCP tools give your AI persistent memory. **Cerebro Pro** wraps it in a
 complete cognitive desktop — where your AI thinks, acts, and evolves autonomously.
 
 </div>
-
-<table>
-<tr>
-<td align="center" width="50%">
-<img src="docs/images/hero-chat.png" alt="Mind Chat" width="440"/>
-<br/>
-<strong>Mind Chat</strong><br/>
-<sub>Talk to your AI brain. Rich conversation with 3D neural constellation and real-time cognitive activity.</sub>
-</td>
-<td align="center" width="50%">
-<img src="docs/images/hero-command.png" alt="Command Center" width="440"/>
-<br/>
-<strong>Command Center</strong><br/>
-<sub>Direct the cognitive loop. OODA cycle visualization, live narration, and full system control.</sub>
-</td>
-</tr>
-<tr>
-<td align="center" width="50%">
-<img src="docs/images/hero-agents.png" alt="Agent Swarms" width="440"/>
-<br/>
-<strong>Agent Swarms</strong><br/>
-<sub>Multiple Claudes, one mission. Spawn and coordinate autonomous agent teams on complex tasks.</sub>
-</td>
-<td align="center" width="50%">
-<img src="docs/images/hero-research.png" alt="Browser Agent" width="440"/>
-<br/>
-<strong>Browser Agent</strong><br/>
-<sub>Autonomous web research with live video preview. Your AI navigates, extracts, and reports back.</sub>
-</td>
-</tr>
-</table>
 
 <div align="center">
   <br/>
@@ -372,9 +333,9 @@ All data stays on your machine. No cloud, no API keys, no telemetry.
 
 <div align="center">
   <br/>
-  <img src="docs/images/hero-research.png" alt="Browser Agent" width="700"/>
-  <br/>
-  <sub>Cerebro Pro browser agent researching autonomously with live preview</sub>
+  <a href="https://cerebro.life">
+    <img src="https://img.shields.io/badge/See_Cerebro_Pro_in_Action-%E2%86%92_cerebro.life-A855F7?style=for-the-badge&labelColor=1a1a2e" alt="Cerebro Pro"/>
+  </a>
   <br/><br/>
 </div>
 

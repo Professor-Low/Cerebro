@@ -215,7 +215,7 @@ if __name__ == "__main__":
     # Test with sample data
     sample_results = [
         {
-            "content": "The NAS IP address is 10.0.0.100. It's a Synology NAS with 16TB available storage.",
+            "content": "The NAS IP address is 10.0.0.100. It's a NAS with 16TB available storage.",
             "chunk_type": "fact",
             "score": 0.92,
             "timestamp": "2026-01-10T14:30:00",
