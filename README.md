@@ -88,11 +88,13 @@ Go beyond retrieval into **genuine reasoning**. Cerebro builds causal models and
 pip install cerebro-ai
 ```
 
-Or install from source:
+For **semantic search** (recommended — uses FAISS + sentence-transformers):
 
 ```bash
-pip install git+https://github.com/Professor-Low/Cerebro.git
+pip install cerebro-ai[embeddings]
 ```
+
+> Without `[embeddings]`, Cerebro falls back to keyword-only search. Still functional, but semantic search is significantly more powerful.
 
 ### 2. Initialize
 
@@ -390,8 +392,6 @@ Cerebro works out of the box with zero configuration. All settings are optional 
 | `CEREBRO_LOG_LEVEL` | `INFO` | Logging level |
 | `CEREBRO_LLM_URL` | *(none)* | Optional local LLM endpoint for deeper reasoning |
 | `CEREBRO_LLM_MODEL` | *(none)* | Optional local LLM model name |
-| `CEREBRO_VECTOR_BACKEND` | `faiss` | Vector backend (`faiss` or `numpy`) |
-| `REDIS_URL` | *(none)* | Optional Redis URL for advanced features |
 
 Set them in your MCP config:
 
