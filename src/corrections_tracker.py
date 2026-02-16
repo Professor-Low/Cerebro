@@ -32,15 +32,31 @@ class CorrectionsTracker:
     # Characters that indicate UTF-8 corruption
     BAD_CHARS = ["â€", "Ã", "Â", "\ufffd"]
 
+    # Common English words that should never be correction values
+    COMMON_WORD_BLOCKLIST = {
+        'think', 'know', 'want', 'need', 'use', 'try', 'say', 'make', 'go', 'get',
+        'see', 'come', 'take', 'give', 'tell', 'ask', 'work', 'call', 'put', 'keep',
+        'better', 'worse', 'good', 'bad', 'great', 'right', 'wrong', 'done',
+        'the', 'a', 'an', 'it', 'this', 'that', 'to', 'in', 'for', 'of', 'on', 'at',
+        'i', 'you', 'he', 'she', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+        'and', 'but', 'or', 'not', 'so', 'yet', 'just', 'also', 'very', 'really',
+        'thing', 'way', 'time', 'bar', 'help', 'skill', 'worth', 'urgent', 'using',
+        'know', 'what', 'where', 'when', 'why', 'how', 'here', 'there', 'create',
+    }
+
     def _is_valid_correction(self, correction: Dict) -> bool:
-        """Validate correction before storing."""
+        """Validate correction before storing.
+
+        Real corrections involve technical values like paths, IPs, port numbers,
+        config keys, or proper nouns - NOT common English words.
+        """
         mistake = correction.get("mistake", "")
         corrected = correction.get("correction", "")
 
-        # Reject if either is empty or too short
-        if not mistake or len(mistake) < 2:
+        # Reject if either is empty or too short (min 3 chars)
+        if not mistake or len(mistake) < 3:
             return False
-        if not corrected or len(corrected) < 2:
+        if not corrected or len(corrected) < 3:
             return False
 
         # Reject if they're the same
@@ -51,23 +67,38 @@ class CorrectionsTracker:
         if any(c in mistake or c in corrected for c in self.BAD_CHARS):
             return False
 
-        # Reject if values look like sentence fragments rather than specific values
-        # (e.g., "you're making" is not a valid wrong value)
+        # Reject common English words
+        if mistake.lower().strip() in self.COMMON_WORD_BLOCKLIST:
+            return False
+        if corrected.lower().strip() in self.COMMON_WORD_BLOCKLIST:
+            return False
+
+        # Reject values starting with conjunctions/articles (sentence fragments)
+        import re
         invalid_patterns = [
             r"^(i'?m|you'?re|he'?s|she'?s|it'?s|we'?re|they'?re)\s",
-            r"^\s*(the|a|an|this|that)\s+\w+\s*$",
+            r"^\s*(the|a|an|this|that|but|and|or|so)\s+\w+",
         ]
-        import re
         for pattern in invalid_patterns:
             if re.match(pattern, mistake, re.IGNORECASE) or re.match(pattern, corrected, re.IGNORECASE):
                 return False
+
+        # At least one value must look technical (contains digits, dots, slashes, etc.)
+        # or be a proper noun (starts with uppercase)
+        def looks_technical(val):
+            return (any(c in val for c in './:_-@0123456789')
+                    or val[0].isupper()
+                    or (val.isupper() and len(val) >= 3))
+
+        if not looks_technical(mistake) and not looks_technical(corrected):
+            return False
 
         return True
 
     def _validate_with_llm(self, mistake: str, correction: str, context: str, user_message: str) -> object:
         """Validate correction via DGX Spark LLM. Returns cleaned correction dict, None (rejected), or 'FALLBACK'."""
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         dgx_host = os.environ.get("CEREBRO_DGX_HOST", "")
         dgx_port = os.environ.get("CEREBRO_DGX_OLLAMA_PORT", "11434")

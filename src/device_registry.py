@@ -80,6 +80,9 @@ class DeviceRegistry:
         if "spark" in hostname.lower():
             device_type = "dgx_spark"
             device_name = "DGX Spark"
+        elif "gx10" in hostname.lower():
+            device_type = "asus_gx10"
+            device_name = "ASUS GX10"
         elif system == "Windows":
             device_type = "windows_pc"
             device_name = "Windows PC"

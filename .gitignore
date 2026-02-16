@@ -68,3 +68,6 @@ htmlcov/
 # Misc
 *.bak
 *.tmp
+
+# Personal scripts (Windows automation)
+scripts/

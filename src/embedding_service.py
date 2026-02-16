@@ -50,7 +50,7 @@ class EmbeddingService:
 
         try:
             # Disable progress bars for cleaner output
-            os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+            os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
 
             from sentence_transformers import SentenceTransformer
             self.model = SentenceTransformer(self.model_name, device='cpu')

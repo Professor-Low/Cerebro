@@ -52,7 +52,7 @@ class EmbeddingsEngine:
     NAS_TIMEOUT = 60
     # Local cache timeout - increased because id_mapping can be large
     # Pickle loads ~10x faster than JSON, but 44MB still takes a moment
-    LOCAL_TIMEOUT = 15
+    LOCAL_TIMEOUT = 5
 
     # AGENT 15: Class-level model cache (shared across all instances)
     _model_cache = None
@@ -262,7 +262,7 @@ class EmbeddingsEngine:
                         return
 
                     # Disable progress bars and reduce verbosity
-                    os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+                    os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
 
                     from sentence_transformers import SentenceTransformer
 
@@ -272,7 +272,7 @@ class EmbeddingsEngine:
                     device = 'cuda' if self._has_gpu() else 'cpu'
 
                     # Use a high-quality, fast model
-                    model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+                    model = SentenceTransformer('all-mpnet-base-v2', device=device)
 
                     if device == 'cuda':
                         print("[Embeddings] Using GPU acceleration")

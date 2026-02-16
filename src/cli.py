@@ -2,7 +2,6 @@
 import asyncio
 import sys
 
-
 __version__ = "0.1.0"
 
 
@@ -66,6 +65,7 @@ def _serve():
 
 def _init(args):
     from pathlib import Path
+
     from .config import DATA_DIR, ensure_directories
 
     storage = DATA_DIR
@@ -97,7 +97,7 @@ def _init(args):
 
 
 def _doctor():
-    from .config import get_platform_info, DATA_DIR
+    from .config import DATA_DIR, get_platform_info
 
     info = get_platform_info()
     print(f"Cerebro Memory v{__version__} - Health Check")

@@ -10,7 +10,7 @@ Usage:
     # Check if DGX is available
     if await is_dgx_embedding_available():
         vectors = await dgx_embed(["text1", "text2"], batch_size=128)
-        # vectors is np.ndarray shape (2, 384)
+        # vectors is np.ndarray shape (2, 768)
     else:
         # Fall back to local embedding or keyword search
         ...
@@ -35,6 +35,10 @@ DGX_EMBEDDING_URL = f"http://{DGX_HOST}:{DGX_PORT}"
 
 # Cache for DGX availability (avoid repeated health checks)
 _dgx_available: Optional[bool] = None
+
+# If no DGX host configured, mark as unavailable immediately
+if not DGX_HOST:
+    _dgx_available = False
 _dgx_check_time: float = 0
 _DGX_CHECK_INTERVAL = 30  # Re-check every 30 seconds
 
@@ -162,7 +166,7 @@ async def dgx_embed(
         timeout: Request timeout (default: DGX_TIMEOUT)
 
     Returns:
-        Numpy array of embeddings (N x 384) or None if DGX unavailable
+        Numpy array of embeddings (N x 768) or None if DGX unavailable
     """
     if timeout is None:
         timeout = DGX_TIMEOUT

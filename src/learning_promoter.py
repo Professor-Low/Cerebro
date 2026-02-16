@@ -13,6 +13,7 @@ for immediate recall in future sessions.
 Phase 5.3 of Brain Evolution.
 """
 
+import hashlib
 import json
 from collections import defaultdict
 from datetime import datetime
@@ -183,7 +184,7 @@ class LearningPromoter:
                 recurring.append({
                     "keyword": keyword,
                     "occurrence_count": len(occurrences),
-                    "best_solution": best_solution,
+                    "best_solution": self._smart_truncate(best_solution, 500),
                     "problems": [o["problem"] for o in sorted_occ[:3]],
                 })
 
@@ -191,21 +192,38 @@ class LearningPromoter:
         recurring.sort(key=lambda x: x["occurrence_count"], reverse=True)
         return recurring
 
+    @staticmethod
+    def _smart_truncate(text: str, max_len: int = 500) -> str:
+        """Truncate text at sentence boundary, not mid-word/mid-sentence."""
+        if not text or len(text) <= max_len:
+            return text
+        # Find the last sentence-ending punctuation before max_len
+        truncated = text[:max_len]
+        for end_char in ['. ', '.\n', '! ', '?\n']:
+            last_period = truncated.rfind(end_char)
+            if last_period > max_len * 0.5:  # Only if we keep at least half
+                return truncated[:last_period + 1].strip()
+        # Fallback: truncate at last space
+        last_space = truncated.rfind(' ')
+        if last_space > max_len * 0.5:
+            return truncated[:last_space].strip()
+        return truncated.strip()
+
     def detect_repeated_solutions(self, min_uses: int = 2) -> List[Dict]:
         """Find solutions that have been used multiple times."""
         learnings = self._load_learnings()
         failures = self._load_failures()
 
-        # Group by solution similarity
+        # Group by solution similarity using full content hash (not prefix)
         solutions = defaultdict(list)
 
         for learning in learnings:
             solution = learning.get("solution", "").strip()
             if solution and len(solution) > 20:
-                # Use first 50 chars as key
-                key = solution[:50].lower()
+                # Use MD5 hash of full lowercase solution for proper dedup
+                key = hashlib.md5(solution.lower().encode()).hexdigest()[:16]
                 solutions[key].append({
-                    "full_solution": solution[:200],
+                    "full_solution": self._smart_truncate(solution, 500),
                     "problem": learning.get("problem", "")[:100],
                     "keywords": learning.get("keywords", []),
                     "date": learning.get("date", ""),
@@ -214,9 +232,9 @@ class LearningPromoter:
         for failure in failures:
             solution = failure.get("what_worked", "").strip()
             if solution and len(solution) > 20:
-                key = solution[:50].lower()
+                key = hashlib.md5(solution.lower().encode()).hexdigest()[:16]
                 solutions[key].append({
-                    "full_solution": solution[:200],
+                    "full_solution": self._smart_truncate(solution, 500),
                     "problem": failure.get("problem", "")[:100],
                     "keywords": failure.get("keywords", []),
                     "date": failure.get("date", ""),

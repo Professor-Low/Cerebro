@@ -17,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: pip install ruff
       - name: Lint with ruff
-        run: ruff check src/ --config ruff.toml
+        run: ruff check src/
 
   test:
     runs-on: ubuntu-latest

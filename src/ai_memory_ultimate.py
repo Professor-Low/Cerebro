@@ -522,6 +522,19 @@ class UltimateMemoryService:
         # Search index
         search_index = self._create_search_index(full_content, extracted)
 
+        # Safety-net device tagging: ensure every conversation gets a device_tag
+        if "device_tag" not in enhanced_metadata:
+            try:
+                from device_registry import get_device_metadata_for_conversation
+                device_meta = get_device_metadata_for_conversation()
+                enhanced_metadata["device_tag"] = device_meta.get("device_tag", "unknown")
+                enhanced_metadata["device"] = device_meta
+            except Exception:
+                import platform
+                import socket
+                enhanced_metadata["device_tag"] = "windows_pc" if platform.system() == "Windows" else "linux_pc"
+                enhanced_metadata["device_hostname"] = socket.gethostname()
+
         # Update conversation record with final metadata and search index
         conversation["metadata"] = enhanced_metadata
         conversation["search_index"] = search_index

@@ -7,8 +7,8 @@ All paths default to ~/.cerebro/data and can be overridden.
 Environment Variables:
     CEREBRO_DATA_DIR: Base directory for all Cerebro data (default: ~/.cerebro/data)
     CEREBRO_NAS_PATH: NAS mount path (optional, for NAS-backed deployments)
-    CEREBRO_EMBEDDING_MODEL: Sentence transformer model (default: all-MiniLM-L6-v2)
-    CEREBRO_EMBEDDING_DIM: Embedding dimensions (default: 384)
+    CEREBRO_EMBEDDING_MODEL: Sentence transformer model (default: all-mpnet-base-v2)
+    CEREBRO_EMBEDDING_DIM: Embedding dimensions (default: 768)
     CEREBRO_LOG_LEVEL: Logging level (default: INFO)
     CEREBRO_LLM_URL: Optional LLM endpoint for reasoning features
     CEREBRO_LLM_MODEL: Optional LLM model name
@@ -62,7 +62,7 @@ EMBEDDING_DIM = int(os.environ.get("CEREBRO_EMBEDDING_DIM", "768"))
 # ============== DGX / GPU SERVER CONFIGURATION ==============
 DGX_HOST = os.environ.get("CEREBRO_DGX_HOST", "")
 DGX_OLLAMA_PORT = int(os.environ.get("CEREBRO_DGX_OLLAMA_PORT", "11434"))
-DGX_EMBEDDING_PORT = int(os.environ.get("CEREBRO_DGX_EMBEDDING_PORT", "8766"))
+DGX_EMBEDDING_PORT = int(os.environ.get("CEREBRO_DGX_EMBEDDING_PORT", "8781"))
 DGX_SEARCH_PORT = int(os.environ.get("CEREBRO_DGX_SEARCH_PORT", "8765"))
 
 # ============== LLM CONFIGURATION (OPTIONAL) ==============

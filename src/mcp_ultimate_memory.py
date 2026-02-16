@@ -18,7 +18,7 @@ SANITIZATION:
 import os
 
 # Embeddings enabled — uses DGX Spark for embedding generation (lazy-loaded, won't block startup)
-os.environ['ENABLE_EMBEDDINGS'] = '1'
+os.environ.setdefault('ENABLE_EMBEDDINGS', '1')
 os.environ.setdefault('CEREBRO_DGX_HOST', '')
 os.environ.setdefault('DGX_EMBEDDING_HOST', '')
 os.environ.setdefault('DGX_EMBEDDING_PORT', '8781')
@@ -235,7 +235,7 @@ def embed_chunks_via_dgx(chunks: list, batch_size: int = 128) -> list:
         return chunks  # Return without embeddings
 
 
-async def wait_for_init(timeout: float = 45.0) -> bool:
+async def wait_for_init(timeout: float = 20.0) -> bool:
     """
     Wait for background initialization to complete.
     Returns True if ready, False if timed out.
@@ -1219,6 +1219,27 @@ async def list_tools():
                     "clear": {
                         "type": "boolean",
                         "description": "If true, clears the active_work section entirely"
+                    },
+                    "workstream_id": {
+                        "type": "string",
+                        "description": "Target a specific workstream by ID (e.g., 'ws_a1b2c3')"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["in_progress", "paused", "completed"],
+                        "description": "Set workstream status"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "Short description of the workstream"
+                    },
+                    "remove_workstream": {
+                        "type": "string",
+                        "description": "Remove a workstream by ID"
+                    },
+                    "list_workstreams": {
+                        "type": "boolean",
+                        "description": "Just return current workstreams state without modifying"
                     }
                 }
             }
@@ -1391,7 +1412,7 @@ async def list_tools():
                     },
                     "actor": {
                         "type": "string",
-                        "description": "Actor filter (for query_episodic, e.g., 'User', 'Claude')"
+                        "description": "Actor filter (for query_episodic, e.g., 'Professor', 'Claude')"
                     },
                     "emotion": {
                         "type": "string",
@@ -1952,13 +1973,34 @@ async def call_tool(name: str, arguments: dict):
     except:
         pass
 
-    # Wait for background initialization to complete (max 45s)
-    # This allows Claude Code to connect immediately while init runs
-    if not await wait_for_init(timeout=45.0):
-        return [TextContent(
-            type="text",
-            text="AI Memory is still initializing (loading embedding model). Please try again in a few seconds."
-        )]
+    # Tools that DON'T need memory/embeddings — can run before init completes
+    # These only read JSON files directly (quick_facts, learnings, etc.)
+    no_init_tools = {
+        "check_session_continuation",
+        "get_recent_learnings",
+        "get_corrections",
+        "update_active_work",
+        "find_learning",
+        "record_learning",
+        "system_health_check",
+        "get_suggestions",
+        "suggest_questions",
+        "device",
+    }
+
+    _tool_t0 = time.time()
+
+    if name not in no_init_tools:
+        # Wait for background initialization to complete (max 45s)
+        sys.stderr.write(f"MCP TOOL [{name}]: waiting for init...\n"); sys.stderr.flush()
+        if not await wait_for_init(timeout=20.0):
+            return [TextContent(
+                type="text",
+                text="AI Memory is still initializing (loading embedding model). Please try again in a few seconds."
+            )]
+        sys.stderr.write(f"MCP TOOL [{name}]: init done in {(time.time()-_tool_t0)*1000:.0f}ms\n"); sys.stderr.flush()
+    else:
+        sys.stderr.write(f"MCP TOOL [{name}]: fast-path (no init wait)\n"); sys.stderr.flush()
 
     try:
         # OPTIMIZATION: Only load services that are actually needed for this tool
@@ -3049,7 +3091,7 @@ async def call_tool(name: str, arguments: dict):
                             event=event,
                             outcome=arguments.get("outcome"),
                             emotional_state=arguments.get("emotional_state"),
-                            actors=["User", "Claude"],
+                            actors=["Professor", "Claude"],
                             conversation_id=arguments.get("conversation_id")
                         )
                         episode_id = episodic.save_episode(episode)
@@ -5783,16 +5825,23 @@ async def call_tool(name: str, arguments: dict):
 
         elif name == "check_session_continuation":
             try:
+                import time as _csc_time
+                _csc_t0 = _csc_time.time()
+                sys.stderr.write("CSC: start\n"); sys.stderr.flush()
+
                 from device_registry import get_current_device_tag
+                sys.stderr.write(f"CSC: import done {(_csc_time.time()-_csc_t0)*1000:.0f}ms\n"); sys.stderr.flush()
 
                 def do_check():
                     hours = arguments.get("hours", 48)
+                    sys.stderr.write(f"CSC: do_check entered {(_csc_time.time()-_csc_t0)*1000:.0f}ms\n"); sys.stderr.flush()
 
                     # Get current device for cross-device comparison
                     try:
                         current_device = get_current_device_tag()
                     except:
                         current_device = "unknown"
+                    sys.stderr.write(f"CSC: device={current_device} {(_csc_time.time()-_csc_t0)*1000:.0f}ms\n"); sys.stderr.flush()
 
                     # ========== FAST NAS CHECK with socket timeout ==========
                     if not is_nas_reachable(timeout=2.0):
@@ -5809,6 +5858,7 @@ async def call_tool(name: str, arguments: dict):
                             "source": "none"
                         }
 
+                    sys.stderr.write(f"CSC: NAS reachable {(_csc_time.time()-_csc_t0)*1000:.0f}ms\n"); sys.stderr.flush()
                     quick_facts_path = AI_MEMORY_BASE / "quick_facts.json"
 
                     # ========== PHASE 1: CHECK quick_facts.json FIRST ==========
@@ -5817,6 +5867,7 @@ async def call_tool(name: str, arguments: dict):
                         if quick_facts_path.exists():
                             with open(quick_facts_path, 'r', encoding='utf-8') as f:
                                 quick_facts = json.load(f)
+                            sys.stderr.write(f"CSC: quick_facts loaded {(_csc_time.time()-_csc_t0)*1000:.0f}ms\n"); sys.stderr.flush()
 
                             active_work = quick_facts.get("active_work", {})
                             if active_work:
@@ -5834,13 +5885,47 @@ async def call_tool(name: str, arguments: dict):
                                     except:
                                         is_recent = True
 
+                                # --- Multi-workstream support ---
+                                workstreams = active_work.get("workstreams", [])
+                                sys.stderr.write(f"CSC: ws={len(workstreams)} is_recent={is_recent} {(_csc_time.time()-_csc_t0)*1000:.0f}ms\n"); sys.stderr.flush()
+                                if workstreams and is_recent:
+                                    # Filter to active workstreams
+                                    active_ws = [ws for ws in workstreams if ws.get("status") in ("in_progress", "paused")]
+                                    sys.stderr.write(f"CSC: active_ws={len(active_ws)} {(_csc_time.time()-_csc_t0)*1000:.0f}ms RETURNING\n"); sys.stderr.flush()
+                                    if active_ws:
+                                        # Sort by priority
+                                        active_ws.sort(key=lambda w: w.get("priority", 99))
+                                        primary = active_ws[0]
+                                        return {
+                                            "has_continuation": True,
+                                            "session_id": primary.get("session_id", f"active_work_{primary.get('project', 'unknown')}"),
+                                            "summary": f"[ACTIVE PROJECT] {primary.get('project', 'Unknown')} - {primary.get('summary', '')}",
+                                            "confidence": 0.95,
+                                            "reason": "Found active workstreams in quick_facts.json",
+                                            "timestamp": active_work.get("last_updated", dt.datetime.now().isoformat()),
+                                            "device_tag": current_device,
+                                            "current_device": current_device,
+                                            "same_device": primary.get("device", "") == current_device,
+                                            "cross_device_warning": primary.get("device", "") != current_device and primary.get("device", "") != "",
+                                            "message": f"Active project: {primary.get('project')} | Next: {primary.get('next_action', '')}",
+                                            "active_work": active_work,
+                                            "workstreams": active_ws,
+                                            "workstream_count": len(active_ws),
+                                            "next_action": primary.get("next_action", ""),
+                                            "key_files": primary.get("key_files", []),
+                                            "plan_file": primary.get("plan_file", ""),
+                                            "last_completed": primary.get("last_completed", ""),
+                                            "source": "quick_facts_workstreams"
+                                        }
+
+                                # --- Legacy flat format fallback ---
                                 if is_recent and active_work.get("next_action"):
                                     return {
                                         "has_continuation": True,
                                         "session_id": f"active_work_{active_work.get('project', 'unknown')}",
                                         "summary": f"[ACTIVE PROJECT] {active_work.get('project', 'Unknown')} - Phase {active_work.get('current_phase', '?')}: {active_work.get('phase_name', '')}",
                                         "confidence": 0.95,
-                                        "reason": "Found active_work in quick_facts.json - this is the PRIMARY continuation source",
+                                        "reason": "Found active_work in quick_facts.json (legacy format)",
                                         "timestamp": last_updated or dt.datetime.now().isoformat(),
                                         "device_tag": current_device,
                                         "current_device": current_device,
@@ -5854,12 +5939,36 @@ async def call_tool(name: str, arguments: dict):
                                         "last_completed": active_work.get("last_completed", ""),
                                         "source": "quick_facts"
                                     }
+
+                                # --- Stale workstreams: return them anyway (don't scan NAS) ---
+                                if not is_recent and workstreams:
+                                    paused_ws = [ws for ws in workstreams if ws.get("status") in ("in_progress", "paused")]
+                                    if paused_ws:
+                                        primary = paused_ws[0]
+                                        return {
+                                            "has_continuation": True,
+                                            "session_id": primary.get("session_id", f"active_work_{primary.get('project', 'unknown')}"),
+                                            "summary": f"[STALE - last updated {last_updated[:10]}] {primary.get('project', 'Unknown')} - {primary.get('summary', '')}",
+                                            "confidence": 0.6,
+                                            "reason": f"Workstreams found but last updated {last_updated[:19]} (older than {hours}h)",
+                                            "timestamp": last_updated or dt.datetime.now().isoformat(),
+                                            "device_tag": current_device,
+                                            "current_device": current_device,
+                                            "same_device": primary.get("device", "") == current_device,
+                                            "cross_device_warning": primary.get("device", "") != current_device and primary.get("device", "") != "",
+                                            "message": f"Stale project: {primary.get('project')} | Next: {primary.get('next_action', '')}",
+                                            "active_work": active_work,
+                                            "workstreams": paused_ws,
+                                            "workstream_count": len(paused_ws),
+                                            "next_action": primary.get("next_action", ""),
+                                            "source": "quick_facts_workstreams_stale"
+                                        }
                     except Exception:
                         pass  # quick_facts check failed, fall back to conversation analysis
 
                     # ========== PHASE 2: FALLBACK - Conversation analysis ==========
-                    # Only runs if quick_facts had no active_work
-                    # Use a capped file scan to avoid reading 300+ files
+                    # Only runs if quick_facts had NO active_work at all
+                    # FAST: cap file scan to avoid NAS timeout
                     try:
                         from session_analyzer import SessionAnalyzer
                         analyzer = SessionAnalyzer()
@@ -5910,9 +6019,18 @@ async def call_tool(name: str, arguments: dict):
                     }
 
                 # Use shorter timeout - this should complete in <5s
+                sys.stderr.write(f"CSC: calling run_in_thread {(_csc_time.time()-_csc_t0)*1000:.0f}ms\n"); sys.stderr.flush()
                 result = await run_in_thread(do_check, timeout=15)
+                elapsed_ms = (_csc_time.time()-_csc_t0)*1000
+                sys.stderr.write(f"CSC: run_in_thread done {elapsed_ms:.0f}ms\n"); sys.stderr.flush()
+                # DEBUG: Write timing to file so we can verify externally
+                try:
+                    with open(str(AI_MEMORY_BASE / "_csc_timing.txt"), "w") as _tf:
+                        _tf.write(f"{_csc_time.strftime('%Y-%m-%d %H:%M:%S', _csc_time.localtime())} completed in {elapsed_ms:.0f}ms source={result.get('source','?')}\n")
+                except: pass
                 return [TextContent(type="text", text=safe_json_dumps(result))]
             except Exception as e:
+                sys.stderr.write(f"CSC: EXCEPTION {e} {(_csc_time.time()-_csc_t0)*1000:.0f}ms\n"); sys.stderr.flush()
                 return [TextContent(type="text", text=safe_json_dumps({"error": str(e), "has_continuation": False}))]
 
         elif name == "get_continuation_context":
@@ -6023,11 +6141,36 @@ async def call_tool(name: str, arguments: dict):
         elif name == "update_active_work":
             try:
                 def do_update_active_work():
+
                     # Fast NAS check with socket timeout - BEFORE touching filesystem
                     if not is_nas_reachable(timeout=2.0):
                         return {"success": False, "error": "NAS not reachable (socket timeout)"}
 
                     quick_facts_path = AI_MEMORY_BASE / "quick_facts.json"
+                    lock_path = AI_MEMORY_BASE / ".quick_facts.lock"
+
+                    # Acquire file lock to prevent concurrent write races
+                    lock_fd = None
+                    try:
+                        import fcntl
+                        lock_fd = open(lock_path, 'w')
+                        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+                    except (ImportError, OSError):
+                        pass  # Windows or lock failure - proceed without lock
+
+                    try:
+                        return _update_active_work_inner(quick_facts_path, arguments)
+                    finally:
+                        if lock_fd:
+                            try:
+                                import fcntl
+                                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                            except (ImportError, OSError):
+                                pass
+                            lock_fd.close()
+
+                def _update_active_work_inner(quick_facts_path, arguments):
+                    import hashlib
 
                     # Load existing quick_facts
                     quick_facts = {}
@@ -6040,48 +6183,197 @@ async def call_tool(name: str, arguments: dict):
 
                     # Handle clear request
                     if arguments.get("clear"):
-                        if "active_work" in quick_facts:
-                            del quick_facts["active_work"]
+                        quick_facts["active_work"] = {"last_updated": dt.datetime.now().isoformat(), "last_device": "", "workstreams": []}
                         with open(quick_facts_path, 'w', encoding='utf-8') as f:
                             json.dump(quick_facts, f, indent=2)
                         return {
                             "success": True,
                             "action": "cleared",
-                            "message": "active_work section cleared from quick_facts.json"
+                            "message": "active_work workstreams cleared"
                         }
 
-                    # Build or update active_work
+                    # --- Migrate flat format to workstreams if needed ---
                     active_work = quick_facts.get("active_work", {})
+                    if "workstreams" not in active_work:
+                        old_ws = []
+                        if active_work.get("project") and active_work.get("next_action"):
+                            old_ws.append({
+                                "id": "ws_" + hashlib.md5(active_work["project"].encode()).hexdigest()[:6],
+                                "project": active_work["project"],
+                                "summary": active_work.get("phase_name", ""),
+                                "status": "in_progress",
+                                "next_action": active_work.get("next_action", ""),
+                                "last_completed": active_work.get("last_completed", ""),
+                                "key_files": active_work.get("key_files", []),
+                                "device": "",
+                                "started_at": active_work.get("last_updated", dt.datetime.now().isoformat()),
+                                "updated_at": dt.datetime.now().isoformat(),
+                                "session_id": "",
+                                "priority": 1
+                            })
+                        active_work = {
+                            "last_updated": dt.datetime.now().isoformat(),
+                            "last_device": "",
+                            "workstreams": old_ws
+                        }
 
-                    # Update fields if provided
+                    workstreams = active_work.get("workstreams", [])
+                    now = dt.datetime.now().isoformat()
+
+                    # Get current device tag
+                    try:
+                        device_tag = get_device_metadata().get("device_tag", "unknown")
+                    except Exception:
+                        device_tag = "unknown"
+
+                    # --- Handle list_workstreams ---
+                    if arguments.get("list_workstreams"):
+                        active_work["last_device"] = device_tag
+                        return {
+                            "success": True,
+                            "action": "listed",
+                            "active_work": active_work,
+                            "workstream_count": len(workstreams),
+                            "in_progress": len([w for w in workstreams if w.get("status") == "in_progress"]),
+                            "message": f"{len(workstreams)} workstreams ({len([w for w in workstreams if w.get('status') == 'in_progress'])} active)"
+                        }
+
+                    # --- Handle remove_workstream ---
+                    if arguments.get("remove_workstream"):
+                        rm_id = arguments["remove_workstream"]
+                        before = len(workstreams)
+                        workstreams = [w for w in workstreams if w.get("id") != rm_id]
+                        active_work["workstreams"] = workstreams
+                        active_work["last_updated"] = now
+                        active_work["last_device"] = device_tag
+                        quick_facts["active_work"] = active_work
+                        with open(quick_facts_path, 'w', encoding='utf-8') as f:
+                            json.dump(quick_facts, f, indent=2)
+                        removed = before - len(workstreams)
+                        return {
+                            "success": True,
+                            "action": "removed",
+                            "removed_count": removed,
+                            "remaining": len(workstreams),
+                            "message": f"Removed {removed} workstream(s), {len(workstreams)} remaining"
+                        }
+
+                    # --- Find or create workstream ---
+                    target_ws = None
+                    target_idx = None
+
+                    # By workstream_id
+                    if arguments.get("workstream_id"):
+                        for i, ws in enumerate(workstreams):
+                            if ws.get("id") == arguments["workstream_id"]:
+                                target_ws = ws
+                                target_idx = i
+                                break
+
+                    # By project name
+                    if target_ws is None and arguments.get("project"):
+                        project_name = arguments["project"]
+                        for i, ws in enumerate(workstreams):
+                            if ws.get("project", "").lower() == project_name.lower():
+                                target_ws = ws
+                                target_idx = i
+                                break
+
+                        # Create new if not found
+                        if target_ws is None:
+                            max_priority = max((ws.get("priority", 0) for ws in workstreams), default=0)
+                            target_ws = {
+                                "id": "ws_" + hashlib.md5(project_name.encode()).hexdigest()[:6],
+                                "project": project_name,
+                                "summary": "",
+                                "status": "in_progress",
+                                "next_action": "",
+                                "last_completed": "",
+                                "key_files": [],
+                                "device": device_tag,
+                                "started_at": now,
+                                "updated_at": now,
+                                "session_id": "",
+                                "priority": max_priority + 1
+                            }
+                            workstreams.append(target_ws)
+                            target_idx = len(workstreams) - 1
+
+                    # If we still have no target, update the first in_progress or create generic
+                    if target_ws is None:
+                        if workstreams:
+                            for i, ws in enumerate(workstreams):
+                                if ws.get("status") == "in_progress":
+                                    target_ws = ws
+                                    target_idx = i
+                                    break
+                        if target_ws is None:
+                            # No project specified and no existing workstreams - create placeholder
+                            target_ws = {
+                                "id": "ws_" + hashlib.md5(now.encode()).hexdigest()[:6],
+                                "project": "Unknown Project",
+                                "summary": "",
+                                "status": "in_progress",
+                                "next_action": "",
+                                "last_completed": "",
+                                "key_files": [],
+                                "device": device_tag,
+                                "started_at": now,
+                                "updated_at": now,
+                                "session_id": "",
+                                "priority": 1
+                            }
+                            workstreams.append(target_ws)
+                            target_idx = len(workstreams) - 1
+
+                    # --- Apply updates to target workstream ---
                     if arguments.get("project"):
-                        active_work["project"] = arguments["project"]
-                    if arguments.get("current_phase"):
-                        active_work["current_phase"] = arguments["current_phase"]
-                    if arguments.get("phase_name"):
-                        active_work["phase_name"] = arguments["phase_name"]
+                        target_ws["project"] = arguments["project"]
+                    if arguments.get("summary"):
+                        target_ws["summary"] = arguments["summary"]
+                    if arguments.get("status"):
+                        target_ws["status"] = arguments["status"]
                     if arguments.get("next_action"):
-                        active_work["next_action"] = arguments["next_action"]
+                        target_ws["next_action"] = arguments["next_action"]
                     if arguments.get("last_completed"):
-                        active_work["last_completed"] = arguments["last_completed"]
+                        target_ws["last_completed"] = arguments["last_completed"]
                     if arguments.get("key_files"):
-                        active_work["key_files"] = arguments["key_files"]
+                        target_ws["key_files"] = arguments["key_files"]
                     if arguments.get("plan_file"):
-                        active_work["plan_file"] = arguments["plan_file"]
+                        target_ws["plan_file"] = arguments["plan_file"]
+                    if arguments.get("current_phase"):
+                        target_ws["current_phase"] = arguments["current_phase"]
+                    if arguments.get("phase_name"):
+                        target_ws["phase_name"] = arguments["phase_name"]
 
-                    # Always update timestamp
-                    active_work["last_updated"] = dt.datetime.now().strftime("%Y-%m-%d")
+                    target_ws["device"] = device_tag
+                    target_ws["updated_at"] = now
 
-                    # Save back
+                    # Update in list
+                    workstreams[target_idx] = target_ws
+
+                    # --- Cap at 10 workstreams ---
+                    if len(workstreams) > 10:
+                        in_prog = [w for w in workstreams if w.get("status") == "in_progress"]
+                        others = [w for w in workstreams if w.get("status") != "in_progress"]
+                        others.sort(key=lambda w: w.get("updated_at", ""), reverse=True)
+                        workstreams = in_prog + others[:10 - len(in_prog)]
+
+                    # --- Save back ---
+                    active_work["workstreams"] = workstreams
+                    active_work["last_updated"] = now
+                    active_work["last_device"] = device_tag
                     quick_facts["active_work"] = active_work
+
                     with open(quick_facts_path, 'w', encoding='utf-8') as f:
                         json.dump(quick_facts, f, indent=2)
 
                     return {
                         "success": True,
                         "action": "updated",
-                        "active_work": active_work,
-                        "message": f"Updated active_work: {active_work.get('project', 'Unknown')} - {active_work.get('next_action', 'No action set')}"
+                        "workstream": target_ws,
+                        "workstream_count": len(workstreams),
+                        "message": f"Updated workstream: {target_ws.get('project', 'Unknown')} - {target_ws.get('next_action', 'No action set')}"
                     }
 
                 # Short timeout - this is a single file read+write, should be <5s
@@ -6169,47 +6461,106 @@ async def call_tool(name: str, arguments: dict):
                     device_tag = arguments.get("device_tag")
                     include_untagged = arguments.get("include_untagged", True)
 
-                    # Search conversations
-                    results = []
+                    # Tokenize query into individual words for scoring
+                    import re as _re
+                    stop_words = {"the", "a", "an", "is", "was", "were", "be", "been",
+                                  "being", "have", "has", "had", "do", "does", "did",
+                                  "will", "would", "could", "should", "may", "might",
+                                  "shall", "can", "to", "of", "in", "for", "on", "with",
+                                  "at", "by", "from", "as", "into", "about", "it", "its",
+                                  "and", "or", "but", "not", "this", "that", "what", "which"}
+                    query_words = [w.lower() for w in _re.findall(r'\w+', query) if len(w) > 1]
+                    query_words_filtered = [w for w in query_words if w not in stop_words]
+                    # Use all words if filtering removes everything
+                    if not query_words_filtered:
+                        query_words_filtered = query_words
+
+                    # Search conversations with relevance scoring
+                    scored_results = []
                     conv_path = memory.conversations_path
 
-                    for conv_file in conv_path.glob("*.json"):
+                    # FAST approach: read only metadata (first ~4KB), skip message bodies
+                    # Sort by mtime newest first, cap at 100 files
+                    try:
+                        all_files = sorted(conv_path.glob("*.json"),
+                                          key=lambda f: f.stat().st_mtime, reverse=True)[:100]
+                    except Exception:
+                        all_files = list(conv_path.glob("*.json"))[:100]
+
+                    for conv_file in all_files:
                         try:
+                            # Read only first 8KB to get metadata without loading full messages
+                            with open(conv_file, "r", encoding="utf-8") as f:
+                                head = f.read(8192)
+
+                            # Quick device_tag check via string search before full parse
+                            if device_tag:
+                                tag_needle = f'"device_tag": "{device_tag}"'
+                                has_tag = tag_needle in head
+                                if not has_tag:
+                                    if not include_untagged:
+                                        continue
+                                    # Check if it has ANY device_tag (then skip — wrong device)
+                                    if '"device_tag"' in head:
+                                        continue
+
+                            # Now parse the full file for matching ones only
                             with open(conv_file, "r", encoding="utf-8") as f:
                                 conv = json.load(f)
 
-                            # Filter by device
                             conv_device = conv.get("metadata", {}).get("device_tag")
-                            if device_tag:
-                                if conv_device != device_tag:
-                                    if not (conv_device is None and include_untagged):
-                                        continue
+                            meta = conv.get("metadata", {})
+                            searchable_parts = [
+                                meta.get("summary", ""),
+                                " ".join(meta.get("tags", [])),
+                                " ".join(meta.get("topics", [])),
+                            ]
+                            # search_index only (skip raw messages — too slow over NAS)
+                            si = conv.get("search_index", {})
+                            if isinstance(si, dict):
+                                kw = si.get("keywords", "")
+                                searchable_parts.append(" ".join(kw) if isinstance(kw, list) else str(kw))
+                                searchable_parts.append(str(si.get("summary", "")))
 
-                            # Search in content
-                            searchable = json.dumps(conv).lower()
-                            if query.lower() in searchable:
-                                results.append({
+                            searchable = " ".join(searchable_parts).lower()
+
+                            score = 0
+                            matched_words = []
+                            for word in query_words_filtered:
+                                if word in searchable:
+                                    score += 1
+                                    matched_words.append(word)
+
+                            if score > 0:
+                                scored_results.append({
                                     "conversation_id": conv.get("id", conv_file.stem),
                                     "device_tag": conv_device or "untagged",
-                                    "device_name": conv.get("metadata", {}).get("device_name", "Unknown"),
+                                    "device_name": meta.get("device_name", "Unknown"),
                                     "timestamp": conv.get("timestamp", ""),
-                                    "summary": conv.get("metadata", {}).get("summary", "")[:200]
+                                    "summary": meta.get("summary", "")[:200],
+                                    "relevance_score": score,
+                                    "matched_words": matched_words,
+                                    "match_ratio": round(score / len(query_words_filtered), 2)
                                 })
 
                         except Exception:
                             continue
 
-                    # Sort by timestamp desc
-                    results.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+                    scored_results.sort(
+                        key=lambda x: (x.get("relevance_score", 0), x.get("timestamp", "")),
+                        reverse=True
+                    )
 
                     return {
-                        "results": results[:20],
-                        "count": len(results),
+                        "results": scored_results[:20],
+                        "count": len(scored_results),
                         "device_filter": device_tag or "all",
-                        "query": query
+                        "query": query,
+                        "query_words": query_words_filtered,
+                        "files_scanned": len(all_files)
                     }
 
-                result = await run_in_thread(do_device_search)
+                result = await run_in_thread(do_device_search, timeout=30)
                 return [TextContent(type="text", text=safe_json_dumps(result))]
             except Exception as e:
                 return [TextContent(type="text", text=safe_json_dumps({"error": str(e)}))]
