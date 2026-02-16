@@ -1,4 +1,9 @@
-"""Cerebro Memory - CLI entry point"""
+"""
+Cerebro Memory - CLI entry point
+
+Copyright (C) 2026 Michael Lopez (Professor-Low)
+Licensed under AGPL-3.0 — see LICENSE for details.
+"""
 import asyncio
 import sys
 

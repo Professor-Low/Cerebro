@@ -419,14 +419,18 @@ Please read the [Contributing Guide](CONTRIBUTING.md) before submitting a pull r
 
 ---
 
-## License
+## License & Attribution
 
 ```
-Cerebro is licensed under the GNU Affero General Public License v3.0.
+Copyright (C) 2026 Michael Lopez (Professor-Low)
+
+Cerebro is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 See LICENSE for details.
-
-Built by Professor-Low
 ```
+
+**What AGPL-3.0 means:** If you use Cerebro's code in your own product — including as a network service — you **must** release your modified source code under the same license and give proper attribution. This protects the project from being taken proprietary.
+
+**Created and maintained by** [Michael Lopez](https://github.com/Professor-Low) (Professor-Low)
 
 <div align="center">
   <br/>

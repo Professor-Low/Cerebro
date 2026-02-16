@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """
+Cerebro Memory - MCP Server
+Copyright (C) 2026 Michael Lopez (Professor-Low)
+Licensed under AGPL-3.0 — see LICENSE for details.
+
 MCP Server for Ultimate AI Memory System with RAG
 Exposes comprehensive memory capabilities via Model Context Protocol
 

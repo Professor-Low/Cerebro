@@ -10,7 +10,7 @@ readme = "README.md"
 license = "AGPL-3.0-only"
 requires-python = ">=3.10"
 authors = [
-    { name = "Professor-Low" },
+    { name = "Michael Lopez", email = "lopez.michael19007@gmail.com" },
 ]
 keywords = ["ai", "memory", "mcp", "claude", "cognitive", "reasoning", "llm"]
 classifiers = [
