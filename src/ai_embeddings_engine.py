@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 try:
-    from config import EMBEDDING_MODEL, EMBEDDING_DIM, EMBEDDING_DEVICE
+    from config import EMBEDDING_DEVICE, EMBEDDING_DIM, EMBEDDING_MODEL
 except ImportError:
     EMBEDDING_MODEL = "all-mpnet-base-v2"
     EMBEDDING_DIM = 768

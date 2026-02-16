@@ -12,7 +12,7 @@ import time
 from typing import Callable, List, Optional
 
 try:
-    from config import EMBEDDING_MODEL, EMBEDDING_DEVICE
+    from config import EMBEDDING_DEVICE, EMBEDDING_MODEL
 except ImportError:
     EMBEDDING_MODEL = "all-mpnet-base-v2"
     EMBEDDING_DEVICE = "auto"
