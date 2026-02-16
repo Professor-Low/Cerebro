@@ -49,7 +49,7 @@ class EmbeddingsEngine:
     _executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
     # Timeout for NAS operations (seconds)
     # NAS timeout for embeddings operations (independent of MCP wrapper timeout)
-    NAS_TIMEOUT = 60
+    NAS_TIMEOUT = 30
     # Local cache timeout - increased because id_mapping can be large
     # Pickle loads ~10x faster than JSON, but 44MB still takes a moment
     LOCAL_TIMEOUT = 5
@@ -767,12 +767,24 @@ class EmbeddingsEngine:
             print(f"WARNING: Could not create local cache dir: {e}")
             return False
 
-    def _get_file_mtime(self, path: Path) -> float:
-        """Get file modification time, returns 0 if file doesn't exist"""
-        try:
-            return path.stat().st_mtime if path.exists() else 0
-        except Exception:
-            return 0
+    def _get_file_mtime(self, path: Path, timeout: float = 3.0) -> float:
+        """Get file modification time with timeout (NAS paths can hang).
+        Returns 0 if file doesn't exist or operation times out."""
+        result = [0.0]
+
+        def _stat():
+            try:
+                result[0] = path.stat().st_mtime if path.exists() else 0.0
+            except Exception:
+                result[0] = 0.0
+
+        thread = threading.Thread(target=_stat, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout)
+        if thread.is_alive():
+            print(f"WARNING: stat() timed out for {path} after {timeout}s")
+            return 0.0
+        return result[0]
 
     def _load_from_local_cache(self):
         """Try to load FAISS index from local SSD cache (fast)"""
@@ -845,12 +857,17 @@ class EmbeddingsEngine:
             return False
 
     def _is_local_cache_stale(self) -> bool:
-        """Check if local cache is older than NAS version"""
+        """Check if local cache is older than NAS version.
+        Returns False (not stale) if NAS is unreachable — use local cache as-is."""
+        # Guard: don't hang trying to stat NAS files if NAS is down
+        if not self._is_nas_available(timeout=2.0):
+            return False
+
         nas_index = self.index_path / "faiss_index.bin"
         local_index = self.LOCAL_CACHE_PATH / "faiss_index.bin"
 
-        nas_mtime = self._get_file_mtime(nas_index)
-        local_mtime = self._get_file_mtime(local_index)
+        nas_mtime = self._get_file_mtime(nas_index, timeout=3.0)
+        local_mtime = self._get_file_mtime(local_index, timeout=2.0)
 
         # If NAS is newer, local cache is stale
         return nas_mtime > local_mtime
@@ -905,6 +922,10 @@ class EmbeddingsEngine:
                     return self.index
 
             # STEP 3: Fall back to NAS (slow but authoritative)
+            # Guard: skip NAS load entirely if NAS is unreachable
+            if not self._is_nas_available(timeout=2.0):
+                print("[Embeddings] NAS unreachable, skipping NAS index load")
+                return None
             if index_file.exists():
                 try:
                     def load_index():

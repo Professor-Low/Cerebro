@@ -6856,17 +6856,27 @@ async def _background_init():
 
     Runs all blocking work in a thread executor so the async event loop stays
     free to handle the MCP protocol handshake (initialize request/response).
+    Hard-capped at 45s to prevent hanging if NAS is slow/unresponsive.
     """
     global _initialized, _init_event
 
     try:
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(_executor, _blocking_init)
+        await asyncio.wait_for(
+            loop.run_in_executor(_executor, _blocking_init),
+            timeout=45.0
+        )
 
         _initialized = True
         _init_event.set()  # Signal waiters that init is complete
         sys.stderr.write("AI Memory MCP: Ready for queries!\n")
         sys.stderr.flush()
+
+    except asyncio.TimeoutError:
+        sys.stderr.write("AI Memory MCP: Warning - initialization timed out after 45s (NAS slow?)\n")
+        sys.stderr.flush()
+        _initialized = False
+        _init_event.set()  # Signal waiters so they don't hang forever
 
     except Exception as e:
         sys.stderr.write(f"AI Memory MCP: Warning - {e}\n")
