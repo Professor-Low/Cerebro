@@ -551,8 +551,9 @@ def main():
 
             # Phase 6: Process corrections for personality evolution
             try:
-                from corrections_tracker import CorrectionsTracker
                 from personality.evolution_engine import PersonalityEvolutionEngine
+
+                from corrections_tracker import CorrectionsTracker
 
                 evolution_engine = PersonalityEvolutionEngine()
                 corrections_tracker = CorrectionsTracker()

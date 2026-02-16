@@ -6911,8 +6911,8 @@ async def main():
     # Use the ORIGINAL stdout (saved before redirect) for MCP protocol.
     # sys.stdout was redirected to stderr early in module load to prevent
     # print() from corrupting the MCP JSON-RPC stream.
-    from io import TextIOWrapper
     import anyio
+    from io import TextIOWrapper
     _mcp_stdout = anyio.wrap_file(
         TextIOWrapper(_original_stdout.buffer, encoding="utf-8")
     )
