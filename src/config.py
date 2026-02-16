@@ -9,6 +9,7 @@ Environment Variables:
     CEREBRO_NAS_PATH: NAS mount path (optional, for NAS-backed deployments)
     CEREBRO_EMBEDDING_MODEL: Sentence transformer model (default: all-mpnet-base-v2)
     CEREBRO_EMBEDDING_DIM: Embedding dimensions (default: 768)
+    CEREBRO_DEVICE: Embedding compute device (auto/cuda/cpu, default: auto)
     CEREBRO_LOG_LEVEL: Logging level (default: INFO)
     CEREBRO_LLM_URL: Optional LLM endpoint for reasoning features
     CEREBRO_LLM_MODEL: Optional LLM model name
@@ -58,6 +59,8 @@ DECAY_STATE_FILE = CACHE_DIR / "decay_state.json"
 # ============== EMBEDDING CONFIGURATION ==============
 EMBEDDING_MODEL = os.environ.get("CEREBRO_EMBEDDING_MODEL", "all-mpnet-base-v2")
 EMBEDDING_DIM = int(os.environ.get("CEREBRO_EMBEDDING_DIM", "768"))
+EMBEDDING_DEVICE = os.environ.get("CEREBRO_DEVICE", "auto")
+# Valid: "auto" (GPU if available, else CPU), "cuda" (force GPU), "cpu" (force CPU)
 
 # ============== DGX / GPU SERVER CONFIGURATION ==============
 DGX_HOST = os.environ.get("CEREBRO_DGX_HOST", "")

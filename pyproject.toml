@@ -47,6 +47,7 @@ dev = [
 ]
 gpu = [
     "faiss-gpu>=1.7.4",
+    "torch>=2.0.0",
 ]
 
 [project.urls]

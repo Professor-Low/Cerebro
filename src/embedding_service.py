@@ -11,6 +11,12 @@ import threading
 import time
 from typing import Callable, List, Optional
 
+try:
+    from config import EMBEDDING_MODEL, EMBEDDING_DEVICE
+except ImportError:
+    EMBEDDING_MODEL = "all-mpnet-base-v2"
+    EMBEDDING_DEVICE = "auto"
+
 
 class EmbeddingService:
     """
@@ -18,7 +24,9 @@ class EmbeddingService:
     Keeps model loaded and processes requests asynchronously.
     """
 
-    def __init__(self, model_name='all-MiniLM-L6-v2'):
+    def __init__(self, model_name=None):
+        if model_name is None:
+            model_name = EMBEDDING_MODEL
         self.model_name = model_name
         self.model = None
         self.request_queue = queue.Queue()
@@ -27,6 +35,29 @@ class EmbeddingService:
 
         # Start the service
         self.start()
+
+    @staticmethod
+    def _get_device() -> str:
+        """Determine compute device, respecting CEREBRO_DEVICE."""
+        if EMBEDDING_DEVICE == "cpu":
+            return "cpu"
+        if EMBEDDING_DEVICE == "cuda":
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    return "cuda"
+            except ImportError:
+                pass
+            print("[EmbeddingService] WARNING: CEREBRO_DEVICE=cuda but CUDA not available")
+            return "cpu"
+        # "auto"
+        try:
+            import torch
+            if torch.cuda.is_available():
+                return "cuda"
+        except ImportError:
+            pass
+        return "cpu"
 
     def start(self):
         """Start the background worker thread"""
@@ -53,8 +84,9 @@ class EmbeddingService:
             os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
 
             from sentence_transformers import SentenceTransformer
-            self.model = SentenceTransformer(self.model_name, device='cpu')
-            print("[EmbeddingService] Model loaded and ready")
+            device = self._get_device()
+            self.model = SentenceTransformer(self.model_name, device=device)
+            print(f"[EmbeddingService] Model loaded on {device}")
         except Exception as e:
             print(f"[EmbeddingService] ERROR: Failed to load model: {e}")
             self.running = False

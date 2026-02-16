@@ -36,6 +36,7 @@ os.environ.setdefault('ENABLE_EMBEDDINGS', '1')
 os.environ.setdefault('CEREBRO_DGX_HOST', '')
 os.environ.setdefault('DGX_EMBEDDING_HOST', '')
 os.environ.setdefault('DGX_EMBEDDING_PORT', '8781')
+os.environ.setdefault('CEREBRO_DEVICE', 'auto')
 
 import asyncio
 import concurrent.futures
@@ -2009,7 +2010,7 @@ async def call_tool(name: str, arguments: dict):
         if not await wait_for_init(timeout=20.0):
             return [TextContent(
                 type="text",
-                text="AI Memory is still initializing (loading embedding model). Please try again in a few seconds."
+                text="AI Memory is still initializing (NAS/model warmup in progress). Please try again in a few seconds."
             )]
         sys.stderr.write(f"MCP TOOL [{name}]: init done in {(time.time()-_tool_t0)*1000:.0f}ms\n"); sys.stderr.flush()
     else:
@@ -6858,7 +6859,7 @@ def _blocking_init():
     if memory_ok:
         sys.stderr.write("  > Memory service: ready\n")
     if embeddings_ok:
-        sys.stderr.write("  > Search: ready (model loads on first use)\n")
+        sys.stderr.write("  > Search: ready (model pre-warmed)\n")
 
     sys.stderr.write("=" * 50 + "\n\n")
     sys.stderr.flush()

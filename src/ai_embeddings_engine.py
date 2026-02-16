@@ -18,6 +18,13 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+try:
+    from config import EMBEDDING_MODEL, EMBEDDING_DIM, EMBEDDING_DEVICE
+except ImportError:
+    EMBEDDING_MODEL = "all-mpnet-base-v2"
+    EMBEDDING_DIM = 768
+    EMBEDDING_DEVICE = "auto"
+
 # Import Project Evolution Tracker for recency weighting
 try:
     from project_evolution import ProjectEvolutionTracker, apply_recency_weighting
@@ -87,7 +94,7 @@ class EmbeddingsEngine:
         self._model_load_failed = False  # Will check environment variable when loading
         self._model_lock = threading.Lock()
 
-        self.embedding_dim = 768
+        self.embedding_dim = EMBEDDING_DIM
         self.index = None
         self.id_mapping = []
 
@@ -216,14 +223,24 @@ class EmbeddingsEngine:
             return self._model
 
     def _has_gpu(self) -> bool:
-        """
-        Check if GPU is available (AGENT 15 optimization).
-        Returns True if CUDA is available and working.
-        """
+        """Check if GPU should be used. Respects CEREBRO_DEVICE env var."""
+        if EMBEDDING_DEVICE == "cpu":
+            return False
+        if EMBEDDING_DEVICE == "cuda":
+            try:
+                import torch
+                if not torch.cuda.is_available():
+                    print("[Embeddings] WARNING: CEREBRO_DEVICE=cuda but CUDA not available, falling back to CPU")
+                    return False
+                return True
+            except ImportError:
+                print("[Embeddings] WARNING: CEREBRO_DEVICE=cuda but torch not installed, falling back to CPU")
+                return False
+        # "auto" (default): detect
         try:
             import torch
             return torch.cuda.is_available()
-        except:
+        except ImportError:
             return False
 
     def _load_model_with_timeout(self, timeout: int = 60):
@@ -271,8 +288,7 @@ class EmbeddingsEngine:
                     # AGENT 15: Use GPU if available, otherwise CPU
                     device = 'cuda' if self._has_gpu() else 'cpu'
 
-                    # Use a high-quality, fast model
-                    model = SentenceTransformer('all-mpnet-base-v2', device=device)
+                    model = SentenceTransformer(EMBEDDING_MODEL, device=device)
 
                     if device == 'cuda':
                         print("[Embeddings] Using GPU acceleration")
@@ -304,7 +320,7 @@ class EmbeddingsEngine:
 
         if result[0]:
             self._model_loaded = True
-            print(f"[Embeddings] Model loaded and cached ({self.embedding_dim} dimensions)")
+            print(f"[Embeddings] Model '{EMBEDDING_MODEL}' loaded on {device} ({self.embedding_dim}d)")
             return result[0]
 
         return None
@@ -315,25 +331,45 @@ class EmbeddingsEngine:
 
     def warmup_cache(self) -> bool:
         """
-        Pre-load FAISS index into memory cache for instant search.
-        Call this at MCP server startup for fast first-search response.
-
-        Returns True if index is ready, False otherwise.
+        Pre-load FAISS index AND embedding model into memory for instant first search.
+        DGX-FIRST: Skips local model if DGX embedding service is available.
         """
         print("[Embeddings] Warming up cache...")
 
-        # Try to load index (will use local cache if available)
+        # Step 1: Load FAISS index
         try:
             self.build_faiss_index(rebuild=False)
             if self.index is not None:
-                print(f"[Embeddings] Cache warm! {self.index.ntotal} vectors ready for instant search")
-                return True
+                print(f"[Embeddings] FAISS index warm: {self.index.ntotal} vectors ready")
             else:
-                print("[Embeddings] No index available, will use keyword search")
-                return False
+                print("[Embeddings] No FAISS index available, will use keyword search")
         except Exception as e:
-            print(f"[Embeddings] Cache warmup failed: {e}")
-            return False
+            print(f"[Embeddings] FAISS warmup failed: {e}")
+
+        # Step 2: Pre-warm embedding model (respects DGX-first)
+        dgx_available = False
+        try:
+            from dgx_embedding_client import is_dgx_embedding_available_sync
+            dgx_available = is_dgx_embedding_available_sync()
+        except ImportError:
+            pass
+        except Exception:
+            pass
+
+        if dgx_available:
+            print("[Embeddings] DGX embedding service available — skipping local model warmup")
+            return self.index is not None
+
+        # No DGX: pre-load local model so first search is instant
+        if os.environ.get('ENABLE_EMBEDDINGS', '0') == '1':
+            print("[Embeddings] Pre-loading embedding model...")
+            model = self.model  # Triggers lazy load via @property
+            if model is not None:
+                print("[Embeddings] Model pre-warmed and ready!")
+            else:
+                print("[Embeddings] Model load failed/disabled, keyword search available")
+
+        return (self.index is not None) or (self._model is not None)
 
     def invalidate_cache(self):
         """Clear memory cache to force reload from disk on next search"""
@@ -506,7 +542,7 @@ class EmbeddingsEngine:
         embedded_chunks = []
         for chunk, embedding in zip(chunks, embeddings):
             chunk["embedding"] = embedding.tolist()
-            chunk["embedding_model"] = "all-MiniLM-L6-v2"
+            chunk["embedding_model"] = EMBEDDING_MODEL
             chunk["embedding_dim"] = self.embedding_dim
             chunk["embedded_at"] = datetime.now().isoformat()
             embedded_chunks.append(chunk)
