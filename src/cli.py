@@ -109,6 +109,8 @@ def _doctor():
     print(f"  NAS storage:     {info['nas_path']}")
     if info.get('nas_connected'):
         print("  NAS status:      Connected")
+    elif info['nas_path'] != "(not configured)":
+        print("  NAS status:      Disconnected")
     print()
 
     # Check data directory
@@ -125,11 +127,23 @@ def _doctor():
         if learn_dir.exists():
             learns = list(learn_dir.glob("*.json"))
             print(f"  Learnings:       {len(learns)}")
-        # Check embeddings
+        # Check embeddings / FAISS index
         emb_dir = DATA_DIR / "embeddings"
         if emb_dir.exists():
-            faiss_files = list(emb_dir.glob("*.faiss"))
-            print(f"  FAISS indexes:   {len(faiss_files)}")
+            # Check all known FAISS index locations and extensions
+            faiss_candidates = [
+                emb_dir / "indexes" / "faiss_index.bin",
+                emb_dir / "indexes" / "faiss_index.faiss",
+                *list(emb_dir.glob("*.faiss")),
+                *list(emb_dir.glob("**/*.bin")),
+            ]
+            faiss_found = [f for f in faiss_candidates if f.exists() and f.stat().st_size > 0]
+            if faiss_found:
+                largest = max(faiss_found, key=lambda f: f.stat().st_size)
+                size_mb = largest.stat().st_size / (1024 * 1024)
+                print(f"  FAISS index:     OK ({size_mb:.1f} MB)")
+            else:
+                print("  FAISS index:     Not found (run search to build)")
     else:
         print("  Storage:         NOT INITIALIZED")
         print("  Run 'cerebro init' to set up the memory store.")

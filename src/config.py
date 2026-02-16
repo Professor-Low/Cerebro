@@ -120,6 +120,14 @@ def validate_nas_connection() -> bool:
 
 def get_platform_info() -> dict:
     """Get current platform configuration."""
+    # Detect NAS from either explicit NAS_PATH or DATA_DIR on a network mount
+    nas_display = "(not configured)"
+    nas_connected = validate_nas_connection()
+    if str(NAS_PATH) != "." and str(NAS_PATH):
+        nas_display = str(NAS_PATH)
+    elif _is_network_path(DATA_DIR):
+        nas_display = str(DATA_DIR)
+        nas_connected = DATA_DIR.exists()
     return {
         "platform": platform.system(),
         "is_windows": IS_WINDOWS,
@@ -128,9 +136,25 @@ def get_platform_info() -> dict:
         "embedding_model": EMBEDDING_MODEL,
         "llm_url": LLM_URL or "(not configured)",
         "port": PORT,
-        "nas_path": str(NAS_PATH) if str(NAS_PATH) != "." else "(not configured)",
-        "nas_connected": validate_nas_connection(),
+        "nas_path": nas_display,
+        "nas_connected": nas_connected,
     }
+
+
+def _is_network_path(path: Path) -> bool:
+    """Detect if a path is on a network mount (NAS, CIFS, etc.)."""
+    s = str(path)
+    # Windows: mapped drives (Z:, etc.) or UNC paths
+    if IS_WINDOWS and len(s) >= 2 and s[0].isalpha() and s[1] == ":":
+        drive = s[0].upper()
+        if drive not in ("C", "D"):  # Non-local drives are likely network mounts
+            return True
+    if s.startswith("\\\\") or s.startswith("//"):
+        return True
+    # Linux: /mnt/ or /media/ paths (common mount points)
+    if s.startswith("/mnt/") or s.startswith("/media/"):
+        return True
+    return False
 
 
 # ============== STARTUP VALIDATION ==============
