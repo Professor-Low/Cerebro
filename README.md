@@ -385,8 +385,8 @@ Cerebro works out of the box with zero configuration. All settings are optional 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CEREBRO_DATA_DIR` | `~/.cerebro/data` | Base directory for all Cerebro data |
-| `CEREBRO_EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence transformer model for semantic search |
-| `CEREBRO_EMBEDDING_DIM` | `384` | Embedding vector dimensions |
+| `CEREBRO_EMBEDDING_MODEL` | `all-mpnet-base-v2` | Sentence transformer model for semantic search |
+| `CEREBRO_EMBEDDING_DIM` | `768` | Embedding vector dimensions |
 | `CEREBRO_LOG_LEVEL` | `INFO` | Logging level |
 | `CEREBRO_LLM_URL` | *(none)* | Optional local LLM endpoint for deeper reasoning |
 | `CEREBRO_LLM_MODEL` | *(none)* | Optional local LLM model name |
