@@ -7,7 +7,7 @@ Licensed under AGPL-3.0 — see LICENSE for details.
 import asyncio
 import sys
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
         _serve()
     elif cmd == "init":
         _init(args[1:])
-    elif cmd == "doctor":
+    elif cmd in ("doctor", "status"):
         _doctor()
     elif cmd in ("--help", "-h", "help"):
         _print_help()
@@ -43,6 +43,7 @@ Usage:
   cerebro serve       Start the MCP memory server (default)
   cerebro init        Initialize the local memory store
   cerebro doctor      Run a health check
+  cerebro status      Alias for doctor
   cerebro --version   Show version
   cerebro --help      Show this help
 

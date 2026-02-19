@@ -83,6 +83,9 @@ class DeviceRegistry:
         elif "gx10" in hostname.lower():
             device_type = "asus_gx10"
             device_name = "ASUS GX10"
+        elif hostname.lower() == "archlinux":
+            device_type = "crystal"
+            device_name = "Crystal"
         elif system == "Windows":
             device_type = "windows_pc"
             device_name = "Windows PC"
