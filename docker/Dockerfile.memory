@@ -17,4 +17,11 @@ RUN mkdir -p /data
 
 ENV CEREBRO_DATA_DIR=/data
 
-CMD ["cerebro", "serve"]
+# Initialize data directory structure and exit.
+# The memory container is a one-shot init container — it creates the
+# required directory layout on the shared volume, then exits cleanly.
+# The backend container handles all runtime memory operations.
+COPY docker/entrypoint-memory.sh /entrypoint-memory.sh
+RUN chmod +x /entrypoint-memory.sh
+
+CMD ["/entrypoint-memory.sh"]

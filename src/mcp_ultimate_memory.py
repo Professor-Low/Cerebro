@@ -43,6 +43,7 @@ import concurrent.futures
 import datetime as dt
 import json
 import re
+import threading
 import uuid
 from functools import partial
 from pathlib import Path
@@ -52,6 +53,19 @@ from pathlib import Path
 _pkg_dir = str(Path(__file__).parent)
 if _pkg_dir not in sys.path:
     sys.path.insert(0, _pkg_dir)
+
+# Pre-import heavy modules on MAIN THREAD to avoid numpy/faiss/TF deadlock
+# when importing in a thread pool thread inside a subprocess (Windows issue).
+# These C extensions use the GIL in ways that deadlock if first imported in a worker thread.
+import numpy  # noqa: F401
+try:
+    import faiss  # noqa: F401
+except ImportError:
+    pass  # faiss not installed — keyword search only
+try:
+    from ai_embeddings_engine import EmbeddingsEngine  # noqa: F401
+except Exception:
+    pass  # Non-fatal — will retry in _init_embeddings
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -125,8 +139,13 @@ def sanitize_result(result: dict) -> dict:
     return sanitized
 
 
-def sanitize_results(results: list) -> list:
-    """Sanitize a list of search results."""
+def sanitize_results(results) -> list:
+    """Sanitize a list of search results. Handles dict error responses gracefully."""
+    if isinstance(results, dict):
+        # do_search() returned an error dict — pass through as single-item list
+        return [results]
+    if not isinstance(results, (list, tuple)):
+        return []
     # Limit number of results
     results = results[:MAX_RESULTS]
     return [sanitize_result(r) for r in results]
@@ -147,6 +166,9 @@ _executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
 
 # SHORTER timeout for NAS operations - fail fast!
 NAS_TIMEOUT = 30
+
+# Background tasks set - prevents GC of fire-and-forget tasks
+_background_tasks: set = set()
 
 # NAS configuration for socket-based reachability check
 NAS_IP = _CONFIG_NAS_IP or os.environ.get("CEREBRO_NAS_IP", "")
@@ -282,22 +304,34 @@ def _init_memory():
 
 
 def _init_embeddings():
-    """Initialize embeddings engine and warm up FAISS cache (called once at startup)"""
+    """Initialize embeddings engine and warm up FAISS index (NOT model).
+
+    Model loading is deferred to first search — it can hang in subprocess
+    thread contexts (TensorFlow/sentence-transformers threading issues).
+    FAISS index loading is fast and safe.
+    """
     global _embeddings
     if _embeddings is None:
         src_path = os.path.dirname(os.path.abspath(__file__))
         if src_path not in sys.path:
             sys.path.insert(0, src_path)
+        sys.stderr.write("[Embeddings] importing module...\n"); sys.stderr.flush()
         from ai_embeddings_engine import EmbeddingsEngine
+        sys.stderr.write("[Embeddings] import done, creating engine...\n"); sys.stderr.flush()
         _embeddings = EmbeddingsEngine(base_path=get_base_path())
+        sys.stderr.write("[Embeddings] engine created, loading FAISS index...\n"); sys.stderr.flush()
 
-        # Pre-load FAISS index into memory cache for instant search
-        # Runs during background init (_blocking_init via _background_init)
-        # so it cannot block MCP startup handshake
+        # Only load FAISS index — skip model pre-load (it hangs in MCP subprocess)
         try:
-            _embeddings.warmup_cache()
+            _embeddings.build_faiss_index(rebuild=False)
+            if _embeddings.index is not None:
+                sys.stderr.write(f"[Embeddings] FAISS index warm: {_embeddings.index.ntotal} vectors\n")
+            else:
+                sys.stderr.write("[Embeddings] No FAISS index, will use keyword search\n")
+            sys.stderr.flush()
         except Exception as e:
-            sys.stderr.write(f"[Embeddings] Cache warmup failed (non-fatal): {e}\n")
+            sys.stderr.write(f"[Embeddings] FAISS warmup failed (non-fatal): {e}\n")
+            sys.stderr.flush()
 
     return _embeddings
 
@@ -1975,9 +2009,187 @@ async def list_tools():
     ]
 
 
+async def _save_conversation_ultimate_inner(memory, arguments):
+    """
+    Inner handler for save_conversation_ultimate.
+    PERFORMANCE FIX: Returns fast after core save, offloads chunking/embedding to background.
+
+    Flow:
+    1. Save conversation to NAS (synchronous, with 45s timeout)
+    2. Read back saved stats (synchronous, with 10s timeout)
+    3. Fire-and-forget: chunking + embedding + feedback analysis (background)
+    4. Return response immediately
+    """
+    # Auto-generate session_id if not provided
+    session_id = arguments.get("session_id")
+    if not session_id:
+        session_id = f"live_{uuid.uuid4().hex[:8]}"
+
+    # Extract metadata before nested functions
+    metadata = arguments.get("metadata", {})
+
+    # AUTO-TAG WITH DEVICE INFO
+    try:
+        device_meta = get_device_metadata()
+        metadata["device_tag"] = device_meta.get("device_tag", "unknown")
+        metadata["device_name"] = device_meta.get("device_name", "Unknown")
+        metadata["device_hostname"] = device_meta.get("hostname", "")
+        metadata["device_os"] = device_meta.get("os", "")
+        metadata["device_architecture"] = device_meta.get("architecture", "")
+    except Exception:
+        metadata["device_tag"] = "unknown"
+
+    # === STEP 1: Core save (blocking, with explicit timeout) ===
+    def do_save():
+        return memory.save_conversation(
+            messages=arguments.get("messages", []),
+            session_id=session_id,
+            metadata=metadata
+        )
+
+    conv_id = await run_in_thread(do_save, timeout=45)
+
+    # === STEP 2: Read back stats (blocking, short timeout) ===
+    def read_stats():
+        conv_file = memory.conversations_path / f"{conv_id}.json"
+        with open(conv_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    saved = await run_in_thread(read_stats, timeout=10)
+
+    # === STEP 3: Background chunking + embedding (fire-and-forget) ===
+    async def _background_chunk_and_embed(saved_data, conv_id_str, meta):
+        """Runs chunking, embedding, and feedback analysis in background."""
+        try:
+            def do_chunk():
+                chunks = _embeddings.chunk_conversation(saved_data)
+                if not chunks:
+                    return 0, False
+
+                previous_chunk_count = meta.get("previous_chunk_count", 0)
+
+                used_dgx = False
+                if is_dgx_embedding_available_cached():
+                    chunks = embed_chunks_via_dgx(chunks, batch_size=128)
+                    if chunks and "embedding" in chunks[0]:
+                        used_dgx = True
+
+                if previous_chunk_count > 0:
+                    _embeddings.save_incremental_chunks(
+                        chunks, conv_id_str,
+                        previous_chunk_count=previous_chunk_count
+                    )
+                else:
+                    _embeddings.save_chunks(chunks, conv_id_str)
+                    if chunks and "embedding" in chunks[0]:
+                        _embeddings.save_vectors(chunks, conv_id_str)
+                return len(chunks), used_dgx
+
+            chunk_result = await run_in_thread(do_chunk, timeout=30)
+            used_dgx = chunk_result[1] if isinstance(chunk_result, tuple) else False
+
+            if used_dgx:
+                try:
+                    from dgx_search_client import invalidate_dgx_cache
+                    invalidate_dgx_cache()
+                except Exception:
+                    pass
+
+        except Exception as e:
+            import sys
+            sys.stderr.write(f"[MCP] Background chunking failed for {conv_id_str}: {e}\n")
+
+        # Feedback analysis (non-critical)
+        try:
+            def do_feedback():
+                from feedback_detector import FeedbackDetector
+                detector = FeedbackDetector()
+                msgs = saved_data.get("messages", [])
+                if msgs:
+                    detector.analyze_conversation_feedback(msgs, conv_id_str)
+            await run_in_thread(do_feedback, timeout=10)
+        except Exception:
+            pass  # Truly non-critical
+
+    # Launch background task (don't await it)
+    task = asyncio.create_task(_background_chunk_and_embed(saved, conv_id, metadata))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+    # === STEP 4: Return immediately with core save results ===
+    return [TextContent(
+        type="text",
+        text=safe_json_dumps({
+            "success": True,
+            "conversation_id": conv_id,
+            "extraction_stats": {
+                "facts": len(saved["extracted_data"]["facts"]),
+                "file_paths": len(saved["extracted_data"]["file_paths"]),
+                "actions": len(saved["extracted_data"]["actions_taken"]),
+                "decisions": len(saved["extracted_data"]["decisions_made"]),
+                "problems": len(saved["extracted_data"]["problems_solved"]),
+                "user_preferences": len(saved["extracted_data"]["user_preferences"]),
+                "goals": len(saved["extracted_data"]["goals_and_intentions"]),
+                "tags": len(saved["metadata"]["tags"]),
+                "topics": len(saved["metadata"]["topics"])
+            },
+            "embedding_stats": {"chunks": "pending_background", "embedded": False, "note": "Chunking/embedding running in background"},
+            "feedback_analysis": {},
+            "device": {
+                "tag": metadata.get("device_tag", "unknown"),
+                "name": metadata.get("device_name", "Unknown"),
+                "hostname": metadata.get("device_hostname", "")
+            },
+            "tags": saved["metadata"]["tags"][:10],
+            "topics": saved["metadata"]["topics"][:10],
+            "importance": saved["metadata"]["importance"],
+            "message": f"Conversation saved from {metadata.get('device_name', 'Unknown')}: {len(saved['extracted_data']['facts'])} facts extracted. Chunking/embedding in background."
+        })
+    )]
+
+
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
     """Handle tool calls - OPTIMIZED: only load what's needed"""
+    import time as _t
+    _call_start = _t.time()
+    sys.stderr.write(f"[CALL_TOOL v2] {name} ENTER\n"); sys.stderr.flush()
+
+    # Threading watchdog — fires even if event loop is blocked
+    def _watchdog():
+        elapsed = _t.time() - _call_start
+        sys.stderr.write(f"[WATCHDOG] {name} STILL RUNNING after {elapsed:.0f}s — event loop may be blocked!\n")
+        sys.stderr.flush()
+    _timer = threading.Timer(90.0, _watchdog)
+    _timer.daemon = True
+    _timer.start()
+
+    try:
+        result = await asyncio.wait_for(
+            _call_tool_inner(name, arguments),
+            timeout=90.0
+        )
+        _timer.cancel()
+        elapsed = _t.time() - _call_start
+        sys.stderr.write(f"[CALL_TOOL v2] {name} OK in {elapsed*1000:.0f}ms\n"); sys.stderr.flush()
+        return result
+    except asyncio.TimeoutError:
+        _timer.cancel()
+        sys.stderr.write(f"[CALL_TOOL v2] {name} TIMEOUT after 90s\n"); sys.stderr.flush()
+        return [TextContent(type="text", text=safe_json_dumps({
+            "error": f"{name} timed out after 90s (global cap)",
+            "suggestion": "NAS or search service may be slow. Try again."
+        }))]
+    except Exception as e:
+        _timer.cancel()
+        sys.stderr.write(f"[CALL_TOOL v2] {name} ERROR: {str(e)[:100]}\n"); sys.stderr.flush()
+        return [TextContent(type="text", text=safe_json_dumps({
+            "error": f"{name} failed: {str(e)[:200]}"
+        }))]
+
+
+async def _call_tool_inner(name: str, arguments: dict):
+    """Inner tool handler — wrapped by call_tool's 90s global timeout."""
 
     # AGENT 16: Basic logging for all tool calls
     start_time = None
@@ -2005,7 +2217,7 @@ async def call_tool(name: str, arguments: dict):
     _tool_t0 = time.time()
 
     if name not in no_init_tools:
-        # Wait for background initialization to complete (max 45s)
+        # Wait for background initialization to complete (max 20s)
         sys.stderr.write(f"MCP TOOL [{name}]: waiting for init...\n"); sys.stderr.flush()
         if not await wait_for_init(timeout=20.0):
             return [TextContent(
@@ -2036,141 +2248,25 @@ async def call_tool(name: str, arguments: dict):
         embeddings = _embeddings if name in embeddings_tools else None
 
         if name == "save_conversation_ultimate":
-            # Auto-generate session_id if not provided (Phase 3.1 fix)
-            session_id = arguments.get("session_id")
-            if not session_id:
-                session_id = f"live_{uuid.uuid4().hex[:8]}"
-
-            # Extract metadata before nested functions (fixes 'metadata not defined' bug)
-            metadata = arguments.get("metadata", {})
-
-            # AUTO-TAG WITH DEVICE INFO (Multi-device awareness)
+            # PERFORMANCE FIX: 60s outer timeout, background chunking/embedding
+            # Previously this handler could hang 8+ minutes blocking Claude Code
             try:
-                device_meta = get_device_metadata()
-                metadata["device_tag"] = device_meta.get("device_tag", "unknown")
-                metadata["device_name"] = device_meta.get("device_name", "Unknown")
-                metadata["device_hostname"] = device_meta.get("hostname", "")
-                metadata["device_os"] = device_meta.get("os", "")
-                metadata["device_architecture"] = device_meta.get("architecture", "")
-            except Exception:
-                # If device detection fails, continue without it
-                metadata["device_tag"] = "unknown"
-
-            def do_save():
-                return memory.save_conversation(
-                    messages=arguments.get("messages", []),
-                    session_id=session_id,
-                    metadata=metadata
+                return await asyncio.wait_for(
+                    _save_conversation_ultimate_inner(memory, arguments),
+                    timeout=60.0
                 )
-
-            conv_id = await run_in_thread(do_save)
-
-            def read_stats():
-                conv_file = memory.conversations_path / f"{conv_id}.json"
-                with open(conv_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
-
-            saved = await run_in_thread(read_stats)
-
-            # AUTO-CHUNK: Create searchable chunks for this conversation
-            # INCREMENTAL OPTIMIZATION (Agent 7): Only embed new chunks
-            # DGX INTEGRATION (Phase 4): Use DGX GPU for embedding generation
-            def do_chunk():
-                chunks = _embeddings.chunk_conversation(saved)
-                if not chunks:
-                    return 0, False
-
-                # Check if this is an incremental save
-                previous_chunk_count = metadata.get("previous_chunk_count", 0)
-
-                # Try DGX embedding if available (doesn't block MCP startup!)
-                used_dgx = False
-                if is_dgx_embedding_available_cached():
-                    chunks = embed_chunks_via_dgx(chunks, batch_size=128)
-                    if chunks and "embedding" in chunks[0]:
-                        used_dgx = True
-
-                if previous_chunk_count > 0:
-                    # INCREMENTAL: Only save and embed new chunks
-                    _embeddings.save_incremental_chunks(
-                        chunks,
-                        conv_id,
-                        previous_chunk_count=previous_chunk_count
-                    )
-                    return len(chunks), used_dgx
-                else:
-                    # FULL SAVE: Save all chunks
-                    _embeddings.save_chunks(chunks, conv_id)
-                    # Also save vectors if embeddings exist
-                    if chunks and "embedding" in chunks[0]:
-                        _embeddings.save_vectors(chunks, conv_id)
-                    return len(chunks), used_dgx
-
-            chunk_result = await run_in_thread(do_chunk)
-            chunk_count = chunk_result[0] if isinstance(chunk_result, tuple) else chunk_result
-            used_dgx = chunk_result[1] if isinstance(chunk_result, tuple) else False
-
-            if used_dgx:
-                embedding_stats = {"chunks": chunk_count, "embedded": True, "embedded_via": "dgx", "indexed": True, "note": "Chunks embedded via DGX GPU"}
-                # Notify DGX search service to reindex (non-blocking)
-                try:
-                    from dgx_search_client import invalidate_dgx_cache
-                    invalidate_dgx_cache()
-                except Exception:
-                    pass
-            else:
-                embedding_stats = {"chunks": chunk_count, "embedded": False, "indexed": True, "note": "Chunks created for RAG search (keyword only)"}
-
-            # Phase 7: Analyze feedback signals in this conversation
-            feedback_analysis = {}
-            try:
-                def do_feedback_analysis():
-                    from feedback_detector import FeedbackDetector
-                    detector = FeedbackDetector()
-                    messages = arguments.get("messages", [])
-                    if messages:
-                        analysis = detector.analyze_conversation_feedback(messages, conv_id)
-                        # If strong feedback signals, link to solutions if possible
-                        return {
-                            "success_signals": len(analysis.get("success_signals", [])),
-                            "failure_signals": len(analysis.get("failure_signals", [])),
-                            "overall_outcome": analysis.get("overall_outcome", "neutral"),
-                            "net_sentiment": analysis.get("net_sentiment", 0)
-                        }
-                    return {}
-                feedback_analysis = await run_in_thread(do_feedback_analysis)
-            except Exception:
-                feedback_analysis = {}  # Non-critical, don't fail save
-
-            return [TextContent(
-                type="text",
-                text=safe_json_dumps({
-                    "success": True,
-                    "conversation_id": conv_id,
-                    "extraction_stats": {
-                        "facts": len(saved["extracted_data"]["facts"]),
-                        "file_paths": len(saved["extracted_data"]["file_paths"]),
-                        "actions": len(saved["extracted_data"]["actions_taken"]),
-                        "decisions": len(saved["extracted_data"]["decisions_made"]),
-                        "problems": len(saved["extracted_data"]["problems_solved"]),
-                        "user_preferences": len(saved["extracted_data"]["user_preferences"]),
-                        "goals": len(saved["extracted_data"]["goals_and_intentions"]),
-                        "tags": len(saved["metadata"]["tags"]),
-                        "topics": len(saved["metadata"]["topics"])
-                    },
-                    "embedding_stats": embedding_stats,
-                    "feedback_analysis": feedback_analysis,
-                    "device": {
-                        "tag": metadata.get("device_tag", "unknown"),
-                        "name": metadata.get("device_name", "Unknown"),
-                        "hostname": metadata.get("device_hostname", "")
-                    },
-                    "tags": saved["metadata"]["tags"][:10],  # Limit tags
-                    "topics": saved["metadata"]["topics"][:10],  # Limit topics
-                    "importance": saved["metadata"]["importance"],
-                    "message": f"Conversation saved from {metadata.get('device_name', 'Unknown')}: {len(saved['extracted_data']['facts'])} facts extracted"
-                })
-            )]
+            except asyncio.TimeoutError:
+                return [TextContent(type="text", text=safe_json_dumps({
+                    "success": False,
+                    "error": "save_conversation_ultimate timed out after 60s",
+                    "message": "Conversation save timed out. NAS may be slow. Try again later."
+                }))]
+            except Exception as e:
+                return [TextContent(type="text", text=safe_json_dumps({
+                    "success": False,
+                    "error": str(e),
+                    "message": f"Conversation save failed: {e}"
+                }))]
 
         elif name == "get_chunk":
             # Retrieve a specific chunk by ID for context injection
@@ -2296,6 +2392,11 @@ async def call_tool(name: str, arguments: dict):
                         )
 
                 results = await run_in_thread(do_search, timeout=45)
+
+                # Short-circuit: do_search can return an error dict
+                if isinstance(results, dict) and "error" in results:
+                    return [TextContent(type="text", text=safe_json_dumps(results))]
+
                 results = sanitize_results(results)
 
             # Apply token-limited compression if requested
@@ -6840,19 +6941,23 @@ def _blocking_init():
     # Initialize memory service
     memory_ok = False
     try:
+        sys.stderr.write(f"  > Memory service: loading... ({(_time.time()-start)*1000:.0f}ms)\n"); sys.stderr.flush()
         _memory = _init_memory()
         memory_ok = True
+        sys.stderr.write(f"  > Memory service: ready ({(_time.time()-start)*1000:.0f}ms)\n"); sys.stderr.flush()
     except Exception as e:
-        sys.stderr.write(f"  > Memory service: FAILED ({e})\n")
+        sys.stderr.write(f"  > Memory service: FAILED ({e})\n"); sys.stderr.flush()
         _memory = None
 
     # Initialize embeddings engine (constructor is now fast due to lazy trackers)
     embeddings_ok = False
     try:
+        sys.stderr.write(f"  > Embeddings: loading... ({(_time.time()-start)*1000:.0f}ms)\n"); sys.stderr.flush()
         _embeddings = _init_embeddings()
         embeddings_ok = True
+        sys.stderr.write(f"  > Embeddings: ready ({(_time.time()-start)*1000:.0f}ms)\n"); sys.stderr.flush()
     except Exception as e:
-        sys.stderr.write(f"  > Search: FAILED ({e})\n")
+        sys.stderr.write(f"  > Search: FAILED ({e})\n"); sys.stderr.flush()
         _embeddings = None
 
     # Show status
@@ -6870,40 +6975,54 @@ async def _background_init():
 
     Runs all blocking work in a thread executor so the async event loop stays
     free to handle the MCP protocol handshake (initialize request/response).
-    Hard-capped at 45s to prevent hanging if NAS is slow/unresponsive.
+    Retries up to 3 times with increasing delays if init fails.
     """
     global _initialized, _init_event
 
-    try:
-        loop = asyncio.get_event_loop()
-        await asyncio.wait_for(
-            loop.run_in_executor(_executor, _blocking_init),
-            timeout=45.0
-        )
+    MAX_RETRIES = 3
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            sys.stderr.write(f"AI Memory MCP: Init attempt {attempt}/{MAX_RETRIES}...\n"); sys.stderr.flush()
+            loop = asyncio.get_event_loop()
+            await asyncio.wait_for(
+                loop.run_in_executor(_executor, _blocking_init),
+                timeout=45.0
+            )
 
-        _initialized = True
-        _init_event.set()  # Signal waiters that init is complete
-        sys.stderr.write("AI Memory MCP: Ready for queries!\n")
-        sys.stderr.flush()
+            _initialized = True
+            _init_event.set()  # Signal waiters that init is complete
+            sys.stderr.write(f"AI Memory MCP: Ready for queries! (attempt {attempt})\n")
+            sys.stderr.flush()
+            return  # Success — exit retry loop
 
-    except asyncio.TimeoutError:
-        sys.stderr.write("AI Memory MCP: Warning - initialization timed out after 45s (NAS slow?)\n")
-        sys.stderr.flush()
-        _initialized = False
-        _init_event.set()  # Signal waiters so they don't hang forever
+        except asyncio.TimeoutError:
+            sys.stderr.write(f"AI Memory MCP: Init attempt {attempt} TIMED OUT after 45s\n")
+            sys.stderr.flush()
 
-    except Exception as e:
-        sys.stderr.write(f"AI Memory MCP: Warning - {e}\n")
-        sys.stderr.flush()
-        _initialized = False
-        _init_event.set()  # Signal waiters even on failure so they don't hang
+        except Exception as e:
+            sys.stderr.write(f"AI Memory MCP: Init attempt {attempt} FAILED: {e}\n")
+            sys.stderr.flush()
+
+        # Retry with delay (except on last attempt)
+        if attempt < MAX_RETRIES:
+            delay = attempt * 5  # 5s, 10s
+            sys.stderr.write(f"AI Memory MCP: Retrying in {delay}s...\n"); sys.stderr.flush()
+            _init_event.set()  # Unblock current waiters so they get "still initializing"
+            await asyncio.sleep(delay)
+            _init_event.clear()  # Reset for next attempt — new waiters will block again
+
+    # All retries exhausted
+    sys.stderr.write(f"AI Memory MCP: All {MAX_RETRIES} init attempts failed. Tools requiring init will return errors.\n")
+    sys.stderr.flush()
+    _initialized = False
+    _init_event.set()  # Final signal — permanently failed
 
 
 async def main():
     """Run the MCP server - accepts connections immediately, initializes in background"""
     global _init_event
 
-    sys.stderr.write("AI Memory MCP: Starting server (initialization runs in background)...\n")
+    sys.stderr.write("AI Memory MCP v2.1: Starting server with GLOBAL 90s TIMEOUT (call_tool v2)...\n")
     sys.stderr.flush()
 
     # Create the init event now that we have an event loop

@@ -320,7 +320,8 @@ class EmbeddingsEngine:
 
         if result[0]:
             self._model_loaded = True
-            print(f"[Embeddings] Model '{EMBEDDING_MODEL}' loaded on {device} ({self.embedding_dim}d)")
+            _dev = 'cuda' if self._has_gpu() else 'cpu'
+            print(f"[Embeddings] Model '{EMBEDDING_MODEL}' loaded on {_dev} ({self.embedding_dim}d)")
             return result[0]
 
         return None
@@ -1618,13 +1619,14 @@ class EmbeddingsEngine:
                 print(f"WARNING: Error in keyword search: {e}")
             return results
 
+        _KW_TIMEOUT = 10  # Keyword search is a fallback — don't wait long
         try:
             future = self._executor.submit(do_search)
-            results = future.result(timeout=self.NAS_TIMEOUT)
+            results = future.result(timeout=_KW_TIMEOUT)
             results = sorted(results, key=lambda x: x["similarity"], reverse=True)
             return results[:top_k]
         except concurrent.futures.TimeoutError:
-            print(f"WARNING: Keyword search timed out after {self.NAS_TIMEOUT}s")
+            print(f"WARNING: Keyword search timed out after {_KW_TIMEOUT}s")
             return []
         except Exception as e:
             print(f"WARNING: Keyword search failed: {e}")

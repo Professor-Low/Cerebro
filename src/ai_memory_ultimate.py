@@ -5,10 +5,35 @@ Captures EVERYTHING: facts, preferences, file paths, decisions, actions, code, a
 import hashlib
 import json
 import re
+import signal
+import threading
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+
+def _run_with_timeout(func, timeout_sec=5, default=None):
+    """Run a function with a thread-based timeout. Returns default on timeout/error."""
+    result = [default]
+    exc = [None]
+
+    def target():
+        try:
+            result[0] = func()
+        except Exception as e:
+            exc[0] = e
+
+    t = threading.Thread(target=target, daemon=True)
+    t.start()
+    t.join(timeout=timeout_sec)
+    if t.is_alive():
+        import sys
+        sys.stderr.write(f"[Memory] {func.__name__ if hasattr(func, '__name__') else 'op'} timed out after {timeout_sec}s\n")
+        return default
+    if exc[0]:
+        raise exc[0]
+    return result[0]
 
 # Import robust extractor (Production-ready extraction)
 try:
@@ -234,35 +259,48 @@ class UltimateMemoryService:
         file_paths = self._extract_file_paths(full_content)
 
         # Use robust extractor if available, fallback to legacy
+        # PERFORMANCE FIX: Each extraction gets a 5s timeout to prevent hangs
+        _EX_TIMEOUT = 5  # seconds per extraction step
+
+        def _safe_extract(name, func, default=None):
+            """Run extraction with timeout, return default on failure."""
+            if default is None:
+                default = []
+            try:
+                return _run_with_timeout(func, timeout_sec=_EX_TIMEOUT, default=default)
+            except Exception as e:
+                print(f"Warning: {name} extraction failed: {e}")
+                return default
+
         if ROBUST_EXTRACTION_ENABLED:
             robust_ex = RobustExtractor()
             extracted = {
-                "facts": self._extract_facts(full_content, messages_to_process),
-                "entities": self._extract_entities(full_content),
+                "facts": _safe_extract("facts", lambda: self._extract_facts(full_content, messages_to_process)),
+                "entities": _safe_extract("entities", lambda: self._extract_entities(full_content)),
                 "file_paths": file_paths,
-                "actions_taken": robust_ex.extract_actions(full_content, messages_to_process),
-                "decisions_made": robust_ex.extract_decisions(full_content, messages_to_process),
-                "problems_solved": robust_ex.extract_problems_solutions(full_content, messages_to_process),
-                "code_snippets": robust_ex.extract_code_snippets_simple(full_content, messages_to_process),
-                "user_preferences": robust_ex.extract_preferences(full_content, messages_to_process),
-                "technical_details": self._extract_technical_details(full_content),
-                "goals_and_intentions": robust_ex.extract_goals(full_content, messages_to_process),
-                "learnings": self._extract_learnings(full_content, messages_to_process)
+                "actions_taken": _safe_extract("actions", lambda: robust_ex.extract_actions(full_content, messages_to_process)),
+                "decisions_made": _safe_extract("decisions", lambda: robust_ex.extract_decisions(full_content, messages_to_process)),
+                "problems_solved": _safe_extract("problems", lambda: robust_ex.extract_problems_solutions(full_content, messages_to_process)),
+                "code_snippets": _safe_extract("code_snippets", lambda: robust_ex.extract_code_snippets_simple(full_content, messages_to_process)),
+                "user_preferences": _safe_extract("preferences", lambda: robust_ex.extract_preferences(full_content, messages_to_process)),
+                "technical_details": _safe_extract("tech_details", lambda: self._extract_technical_details(full_content)),
+                "goals_and_intentions": _safe_extract("goals", lambda: robust_ex.extract_goals(full_content, messages_to_process)),
+                "learnings": _safe_extract("learnings", lambda: self._extract_learnings(full_content, messages_to_process))
             }
         else:
             # Legacy extraction
             extracted = {
-                "facts": self._extract_facts(full_content, messages_to_process),
-                "entities": self._extract_entities(full_content),
+                "facts": _safe_extract("facts", lambda: self._extract_facts(full_content, messages_to_process)),
+                "entities": _safe_extract("entities", lambda: self._extract_entities(full_content)),
                 "file_paths": file_paths,
-                "actions_taken": self._extract_actions(full_content, messages_to_process),
-                "decisions_made": self._extract_decisions(full_content, messages_to_process),
-                "problems_solved": self._extract_problems_solutions(full_content, messages_to_process),
-                "code_snippets": self._extract_code_snippets(full_content, messages_to_process),
-                "user_preferences": self._extract_preferences(full_content, messages_to_process),
-                "technical_details": self._extract_technical_details(full_content),
-                "goals_and_intentions": self._extract_goals(full_content, messages_to_process),
-                "learnings": self._extract_learnings(full_content, messages_to_process)
+                "actions_taken": _safe_extract("actions", lambda: self._extract_actions(full_content, messages_to_process)),
+                "decisions_made": _safe_extract("decisions", lambda: self._extract_decisions(full_content, messages_to_process)),
+                "problems_solved": _safe_extract("problems", lambda: self._extract_problems_solutions(full_content, messages_to_process)),
+                "code_snippets": _safe_extract("code_snippets", lambda: self._extract_code_snippets(full_content, messages_to_process)),
+                "user_preferences": _safe_extract("preferences", lambda: self._extract_preferences(full_content, messages_to_process)),
+                "technical_details": _safe_extract("tech_details", lambda: self._extract_technical_details(full_content)),
+                "goals_and_intentions": _safe_extract("goals", lambda: self._extract_goals(full_content, messages_to_process)),
+                "learnings": _safe_extract("learnings", lambda: self._extract_learnings(full_content, messages_to_process))
             }
 
         # NEW: Process corrections (Agent 2 integration)
@@ -563,25 +601,47 @@ class UltimateMemoryService:
         with open(conv_file, "w", encoding="utf-8") as f:
             json.dump(conversation, f, indent=2, ensure_ascii=False)
 
-        # AGENT 9: Extract and index code snippets
+        # AGENT 9: Extract and index code snippets (with timeout)
         try:
-            from code_indexer import CodeIndexer
-            code_indexer = CodeIndexer(base_path=str(self.base_path))
-            code_snippets = code_indexer.extract_code_from_conversation(conversation)
-            if code_snippets:
-                code_indexer.save_snippets(code_snippets, conv_id)
+            _run_with_timeout(
+                lambda: self._code_index_helper(conversation, conv_id),
+                timeout_sec=10, default=None
+            )
         except Exception as e:
             print(f"Warning: Code indexing failed: {e}")
 
-        # Update knowledge base indexes
-        self._update_knowledge_base(conv_id, extracted, enhanced_metadata)
-        self._update_entity_database(conv_id, extracted["entities"])
-        self._update_timeline(conv_id, extracted, enhanced_metadata)
+        # Update knowledge base indexes (with timeouts - fail gracefully on slow NAS)
+        try:
+            _run_with_timeout(
+                lambda: self._update_knowledge_base(conv_id, extracted, enhanced_metadata),
+                timeout_sec=10, default=None
+            )
+        except Exception as e:
+            print(f"Warning: Knowledge base update failed: {e}")
 
-        # Update user profile if personal data was extracted
+        try:
+            _run_with_timeout(
+                lambda: self._update_entity_database(conv_id, extracted["entities"]),
+                timeout_sec=10, default=None
+            )
+        except Exception as e:
+            print(f"Warning: Entity database update failed: {e}")
+
+        try:
+            _run_with_timeout(
+                lambda: self._update_timeline(conv_id, extracted, enhanced_metadata),
+                timeout_sec=10, default=None
+            )
+        except Exception as e:
+            print(f"Warning: Timeline update failed: {e}")
+
+        # Update user profile if personal data was extracted (with timeout)
         if user_profile_data and user_profile_data.get('is_personal_conversation'):
             try:
-                update_user_profile(conv_id, user_profile_data, str(self.base_path))
+                _run_with_timeout(
+                    lambda: update_user_profile(conv_id, user_profile_data, str(self.base_path)),
+                    timeout_sec=5, default=None
+                )
                 print(f"[User] Updated profile with data from conversation {conv_id}")
             except Exception as e:
                 print(f"Warning: Failed to update user profile: {e}")
@@ -596,6 +656,14 @@ class UltimateMemoryService:
             )
 
         return conv_id
+
+    def _code_index_helper(self, conversation, conv_id):
+        """Helper for code indexing - extracted for timeout wrapper."""
+        from code_indexer import CodeIndexer
+        code_indexer = CodeIndexer(base_path=str(self.base_path))
+        code_snippets = code_indexer.extract_code_from_conversation(conversation)
+        if code_snippets:
+            code_indexer.save_snippets(code_snippets, conv_id)
 
     def _combine_messages(self, messages: List[Dict[str, str]]) -> str:
         """Combine all messages into searchable text"""
