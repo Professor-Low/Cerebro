@@ -132,6 +132,48 @@ class KeywordIndex:
         self.conn.commit()
         return indexed
 
+    def add_chunks(self, chunks: List[Dict], conversation_id: str) -> int:
+        """Incrementally add chunks to the keyword index (mirrors FAISS append pattern).
+
+        Args:
+            chunks: List of chunk dicts with at least 'content' and optionally
+                    'chunk_id', 'chunk_type', 'metadata'.
+            conversation_id: The conversation these chunks belong to.
+
+        Returns:
+            Number of chunks indexed.
+        """
+        if not chunks:
+            return 0
+
+        indexed = 0
+        try:
+            for chunk in chunks:
+                self.conn.execute("""
+                    INSERT INTO chunks_fts (conversation_id, chunk_id, chunk_type, content, metadata)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    conversation_id,
+                    chunk.get("chunk_id", ""),
+                    chunk.get("chunk_type", "message"),
+                    chunk.get("content", ""),
+                    json.dumps(chunk.get("metadata", {}))
+                ))
+                indexed += 1
+
+            # Track the file as indexed (use conv_id as filename for consistency)
+            filename = f"{conversation_id}.jsonl"
+            self.conn.execute("""
+                INSERT OR REPLACE INTO indexed_files (filename, mtime, chunk_count)
+                VALUES (?, ?, ?)
+            """, (filename, 0.0, indexed))  # mtime=0 means "added incrementally"
+
+            self.conn.commit()
+        except Exception as e:
+            print(f"Warning: Failed to add chunks to keyword index: {e}")
+
+        return indexed
+
     def search(self, query: str, top_k: int = 10) -> List[Dict]:
         """Fast keyword search using FTS5"""
         try:

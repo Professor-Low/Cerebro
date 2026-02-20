@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-02-19
+
+### Fixed
+- MCP search hang: replaced `ThreadPoolExecutor` with `threading.Thread` in embeddings engine — executor fails in MCP subprocess context with "cannot schedule new futures after interpreter shutdown"
+- Replaced `loop.run_in_executor()` with `asyncio.to_thread()` in MCP server async wrapper
+- Removed slow NAS keyword search fallback (816MB read over CIFS causing 45s+ timeouts) — returns empty instead
+
+### Added
+- `rebuild_keyword_index` MCP tool for rebuilding SQLite FTS5 index on demand
+- Auto-populate keyword index on startup if empty (background rebuild)
+- Incremental keyword index updates when saving conversations
+- `add_chunks()` method on `KeywordIndex` for incremental FTS5 inserts
+- Background NAS-to-local-cache sync after loading FAISS from local cache
+
 ## [0.1.0] - 2026-02-14
 
 ### Added
@@ -26,5 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional GPU acceleration for embeddings
 - Redis integration for advanced features
 
-[unreleased]: https://github.com/Professor-Low/Cerebro/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/Professor-Low/Cerebro/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/Professor-Low/Cerebro/compare/v0.1.0...v0.1.2
 [0.1.0]: https://github.com/Professor-Low/Cerebro/releases/tag/v0.1.0

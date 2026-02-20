@@ -52,14 +52,33 @@ class EmbeddingsEngine:
     LOCAL CACHE: FAISS index cached on local SSD for instant loading.
     """
 
-    # Class-level thread pool for async-safe file I/O
-    _executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
     # Timeout for NAS operations (seconds)
     # NAS timeout for embeddings operations (independent of MCP wrapper timeout)
     NAS_TIMEOUT = 30
     # Local cache timeout - increased because id_mapping can be large
     # Pickle loads ~10x faster than JSON, but 44MB still takes a moment
     LOCAL_TIMEOUT = 5
+
+    @staticmethod
+    def _run_with_timeout(func, timeout):
+        """Run func in a thread with timeout. Uses threading.Thread instead of
+        concurrent.futures.ThreadPoolExecutor which fails in MCP subprocess
+        context with 'cannot schedule new futures after interpreter shutdown'."""
+        result = [None]
+        error = [None]
+        def wrapper():
+            try:
+                result[0] = func()
+            except Exception as e:
+                error[0] = e
+        t = threading.Thread(target=wrapper, daemon=True)
+        t.start()
+        t.join(timeout=timeout)
+        if t.is_alive():
+            raise TimeoutError(f"Operation timed out after {timeout}s")
+        if error[0]:
+            raise error[0]
+        return result[0]
 
     # AGENT 15: Class-level model cache (shared across all instances)
     _model_cache = None
@@ -118,11 +137,10 @@ class EmbeddingsEngine:
                     path.mkdir(parents=True, exist_ok=True)
                 return True
 
-            future = self._executor.submit(create_dirs)
-            result = future.result(timeout=self.NAS_TIMEOUT)
+            result = self._run_with_timeout(create_dirs, self.NAS_TIMEOUT)
             self._directories_created = result
             return result
-        except concurrent.futures.TimeoutError:
+        except (TimeoutError, concurrent.futures.TimeoutError):
             print(f"WARNING: Directory creation timed out after {self.NAS_TIMEOUT}s")
             return False
         except Exception as e:
@@ -605,9 +623,8 @@ class EmbeddingsEngine:
                     f.write(json.dumps(chunk) + "\n")
 
         try:
-            future = self._executor.submit(do_save)
-            future.result(timeout=self.NAS_TIMEOUT)
-        except concurrent.futures.TimeoutError:
+            self._run_with_timeout(do_save, self.NAS_TIMEOUT)
+        except (TimeoutError, concurrent.futures.TimeoutError):
             print(f"WARNING: Saving chunks timed out after {self.NAS_TIMEOUT}s")
         except Exception as e:
             print(f"WARNING: Failed to save chunks: {e}")
@@ -652,8 +669,7 @@ class EmbeddingsEngine:
                         f.write(json.dumps(chunk) + "\n")
 
         try:
-            future = self._executor.submit(do_save)
-            future.result(timeout=self.NAS_TIMEOUT)
+            self._run_with_timeout(do_save, self.NAS_TIMEOUT)
 
             # Generate embeddings ONLY for new chunks
             if self.model:
@@ -664,7 +680,7 @@ class EmbeddingsEngine:
 
             return len(new_chunks)
 
-        except concurrent.futures.TimeoutError:
+        except (TimeoutError, concurrent.futures.TimeoutError):
             print(f"WARNING: Incremental save timed out after {self.NAS_TIMEOUT}s")
             return 0
         except Exception as e:
@@ -749,10 +765,9 @@ class EmbeddingsEngine:
             return index.ntotal  # Total vectors now in index
 
         try:
-            future = self._executor.submit(do_append)
-            total = future.result(timeout=self.NAS_TIMEOUT)
+            total = self._run_with_timeout(do_append, self.NAS_TIMEOUT)
             print(f"[Incremental] Added {len(new_chunks)} chunks. Total index size: {total}")
-        except concurrent.futures.TimeoutError:
+        except (TimeoutError, concurrent.futures.TimeoutError):
             print(f"WARNING: Index append timed out after {self.NAS_TIMEOUT}s")
         except Exception as e:
             print(f"WARNING: Failed to append to FAISS index: {e}")
@@ -788,9 +803,8 @@ class EmbeddingsEngine:
                 json.dump(metadata, f, indent=2)
 
         try:
-            future = self._executor.submit(do_save)
-            future.result(timeout=self.NAS_TIMEOUT)
-        except concurrent.futures.TimeoutError:
+            self._run_with_timeout(do_save, self.NAS_TIMEOUT)
+        except (TimeoutError, concurrent.futures.TimeoutError):
             print(f"WARNING: Saving vectors timed out after {self.NAS_TIMEOUT}s")
         except Exception as e:
             print(f"WARNING: Failed to save vectors: {e}")
@@ -856,8 +870,9 @@ class EmbeddingsEngine:
                     return None, None
                 return idx, mapping
 
-            future = self._executor.submit(load_local)
-            idx, mapping = future.result(timeout=self.LOCAL_TIMEOUT)
+            # Direct call — executor.submit fails in MCP subprocess
+            # ("cannot schedule new futures after interpreter shutdown")
+            idx, mapping = load_local()
             print(f"[Embeddings] Loaded from LOCAL CACHE ({idx.ntotal} vectors) - fast!")
             return idx, mapping
         except Exception as e:
@@ -885,8 +900,7 @@ class EmbeddingsEngine:
                     pickle.dump(id_mapping, f)
                 return True
 
-            future = self._executor.submit(save_local)
-            future.result(timeout=self.LOCAL_TIMEOUT)
+            self._run_with_timeout(save_local, self.LOCAL_TIMEOUT)
             print("[Embeddings] Saved to local cache for instant future loads")
             return True
         except Exception as e:
@@ -948,7 +962,29 @@ class EmbeddingsEngine:
                     # Update class-level cache
                     with self._index_cache_lock:
                         EmbeddingsEngine._index_cache = (self.index, self.id_mapping)
-                    # TODO: Background sync from NAS
+                    # Background sync from NAS — update local cache without blocking
+                    def _bg_nas_sync():
+                        try:
+                            import faiss as _faiss
+                            nas_index_file = self.index_path / "faiss_index.bin"
+                            nas_mapping_file = self.index_path / "id_mapping.json"
+                            if not nas_index_file.exists():
+                                return
+                            idx = _faiss.read_index(str(nas_index_file))
+                            with open(nas_mapping_file, "r", encoding="utf-8") as f:
+                                mapping = json.load(f)
+                            # Save fresh NAS data to local cache
+                            self._save_to_local_cache(idx, mapping)
+                            # Update class-level memory cache so next search uses fresh data
+                            with self._index_cache_lock:
+                                EmbeddingsEngine._index_cache = (idx, mapping)
+                            self.index = idx
+                            self.id_mapping = mapping
+                            print(f"[Embeddings] Background NAS sync complete ({idx.ntotal} vectors)")
+                        except Exception as e:
+                            print(f"[Embeddings] Background NAS sync failed (non-fatal): {e}")
+                    sync_thread = threading.Thread(target=_bg_nas_sync, daemon=True)
+                    sync_thread.start()
                     return self.index
                 else:
                     self.index = local_idx
@@ -971,8 +1007,7 @@ class EmbeddingsEngine:
                             mapping = json.load(f)
                         return idx, mapping
 
-                    future = self._executor.submit(load_index)
-                    self.index, self.id_mapping = future.result(timeout=self.NAS_TIMEOUT)
+                    self.index, self.id_mapping = self._run_with_timeout(load_index, self.NAS_TIMEOUT)
                     print(f"[Embeddings] FAISS index loaded from NAS ({self.index.ntotal} vectors)")
 
                     # STEP 4: Save to local cache for next time
@@ -983,7 +1018,7 @@ class EmbeddingsEngine:
                         EmbeddingsEngine._index_cache = (self.index, self.id_mapping)
 
                     return self.index
-                except concurrent.futures.TimeoutError:
+                except (TimeoutError, concurrent.futures.TimeoutError):
                     print(f"WARNING: FAISS index loading timed out after {self.NAS_TIMEOUT}s. Falling back to keyword search.")
                     return None
                 except Exception as e:
@@ -1112,9 +1147,8 @@ class EmbeddingsEngine:
                 return count
 
             try:
-                future = self._executor.submit(count_chunks)
-                total_chunks = future.result(timeout=self.NAS_TIMEOUT)
-            except concurrent.futures.TimeoutError:
+                total_chunks = self._run_with_timeout(count_chunks, self.NAS_TIMEOUT)
+            except (TimeoutError, concurrent.futures.TimeoutError):
                 print(f"WARNING: Chunk counting timed out after {self.NAS_TIMEOUT}s, skipping validation")
                 result["status"] = "timeout"
                 result["details"] = "Chunk counting timed out, skipping validation"
@@ -1571,12 +1605,14 @@ class EmbeddingsEngine:
                     return results
 
         except ImportError:
-            print("[Embeddings] keyword_index not available, using slow fallback")
+            print("[Embeddings] keyword_index not available, returning empty")
         except Exception as e:
-            print(f"[Embeddings] SQLite search failed: {e}, using slow fallback")
+            print(f"[Embeddings] SQLite search failed: {e}, returning empty")
 
-        # Fallback to slow file-based search (with timeout)
-        return self._keyword_search_slow(query, top_k)
+        # DO NOT fall back to _keyword_search_slow — it reads 816MB from NAS
+        # over CIFS and causes 45s+ timeouts. Semantic search (FAISS) is the
+        # primary path; an empty keyword result is better than a hung search.
+        return []
 
     def _keyword_search_slow(self, query: str, top_k: int = 10) -> List[Dict]:
         """Slow fallback keyword search - reads all files from NAS"""
@@ -1621,11 +1657,10 @@ class EmbeddingsEngine:
 
         _KW_TIMEOUT = 10  # Keyword search is a fallback — don't wait long
         try:
-            future = self._executor.submit(do_search)
-            results = future.result(timeout=_KW_TIMEOUT)
+            results = self._run_with_timeout(do_search, _KW_TIMEOUT)
             results = sorted(results, key=lambda x: x["similarity"], reverse=True)
             return results[:top_k]
-        except concurrent.futures.TimeoutError:
+        except TimeoutError:
             print(f"WARNING: Keyword search timed out after {_KW_TIMEOUT}s")
             return []
         except Exception as e:

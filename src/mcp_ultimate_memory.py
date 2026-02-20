@@ -333,15 +333,42 @@ def _init_embeddings():
             sys.stderr.write(f"[Embeddings] FAISS warmup failed (non-fatal): {e}\n")
             sys.stderr.flush()
 
+        # Auto-populate keyword index if empty (one-time rebuild in background)
+        try:
+            from keyword_index import get_keyword_index
+            kw_idx = get_keyword_index(_embeddings.chunks_path)
+            if kw_idx.needs_rebuild():
+                sys.stderr.write("[Keywords] Index empty, starting background rebuild...\n")
+                sys.stderr.flush()
+                def _rebuild_keyword_index_bg():
+                    try:
+                        count = kw_idx.build_index(_embeddings.chunks_path)
+                        sys.stderr.write(f"[Keywords] Background rebuild done: {count} chunks indexed\n")
+                        sys.stderr.flush()
+                    except Exception as e:
+                        sys.stderr.write(f"[Keywords] Background rebuild failed: {e}\n")
+                        sys.stderr.flush()
+                t = threading.Thread(target=_rebuild_keyword_index_bg, daemon=True)
+                t.start()
+            else:
+                count = kw_idx.get_indexed_count()
+                sys.stderr.write(f"[Keywords] Index warm: {count} chunks\n")
+                sys.stderr.flush()
+        except Exception as e:
+            sys.stderr.write(f"[Keywords] Init failed (non-fatal): {e}\n")
+            sys.stderr.flush()
+
     return _embeddings
 
 
 async def run_in_thread(func, *args, timeout=NAS_TIMEOUT):
-    """Run blocking function in thread pool with timeout"""
-    loop = asyncio.get_event_loop()
+    """Run blocking function in thread pool with timeout.
+    Uses asyncio.to_thread instead of executor — the global ThreadPoolExecutor
+    can fail in MCP subprocess with 'cannot schedule new futures after interpreter shutdown'.
+    """
     try:
         return await asyncio.wait_for(
-            loop.run_in_executor(_executor, partial(func, *args)),
+            asyncio.to_thread(partial(func, *args)),
             timeout=timeout
         )
     except asyncio.TimeoutError:
@@ -545,6 +572,14 @@ async def list_tools():
         Tool(
             name="rebuild_vector_index",
             description="Rebuild the vector search index. Call this after saving multiple conversations or if search results seem outdated. Takes a few seconds to complete.",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
+        Tool(
+            name="rebuild_keyword_index",
+            description="Rebuild the SQLite FTS5 keyword search index from all chunk files. Use this if keyword searches return no results or the index is out of sync.",
             inputSchema={
                 "type": "object",
                 "properties": {}
@@ -2083,6 +2118,15 @@ async def _save_conversation_ultimate_inner(memory, arguments):
                     _embeddings.save_chunks(chunks, conv_id_str)
                     if chunks and "embedding" in chunks[0]:
                         _embeddings.save_vectors(chunks, conv_id_str)
+
+                # Update keyword index incrementally (keeps SQLite FTS5 in sync)
+                try:
+                    from keyword_index import get_keyword_index
+                    kw_idx = get_keyword_index(_embeddings.chunks_path)
+                    kw_idx.add_chunks(chunks, conv_id_str)
+                except Exception as _kw_err:
+                    sys.stderr.write(f"[MCP] Keyword index update failed (non-fatal): {_kw_err}\n")
+
                 return len(chunks), used_dgx
 
             chunk_result = await run_in_thread(do_chunk, timeout=30)
@@ -2237,6 +2281,7 @@ async def _call_tool_inner(name: str, arguments: dict):
             "save_conversation_ultimate",  # Now auto-chunks!
             "search",  # consolidated search tool
             "rebuild_vector_index",
+            "rebuild_keyword_index",
             # Legacy names for backward compatibility
             "semantic_search",
             "hybrid_search",
@@ -2391,7 +2436,9 @@ async def _call_tool_inner(name: str, arguments: dict):
                             recency_decay_days=recency_days
                         )
 
-                results = await run_in_thread(do_search, timeout=45)
+                # Use asyncio.to_thread — the global _executor can fail in MCP
+                # subprocess with "cannot schedule new futures after interpreter shutdown"
+                results = await asyncio.wait_for(asyncio.to_thread(do_search), timeout=45)
 
                 # Short-circuit: do_search can return an error dict
                 if isinstance(results, dict) and "error" in results:
@@ -5166,6 +5213,29 @@ async def _call_tool_inner(name: str, arguments: dict):
                 "timeout_used": dynamic_timeout
             }))]
 
+        elif name == "rebuild_keyword_index":
+            def do_kw_rebuild():
+                import time as _t
+                _start = _t.monotonic()
+                from keyword_index import get_keyword_index
+                kw_idx = get_keyword_index(embeddings.chunks_path)
+                # Clear existing index
+                kw_idx.conn.execute("DELETE FROM chunks_fts")
+                kw_idx.conn.execute("DELETE FROM indexed_files")
+                kw_idx.conn.commit()
+                count = kw_idx.build_index(embeddings.chunks_path)
+                elapsed = _t.monotonic() - _start
+                return {"count": count, "elapsed": elapsed}
+
+            # Generous timeout — first build reads all chunk files from NAS
+            result = await run_in_thread(do_kw_rebuild, timeout=300)
+            return [TextContent(type="text", text=safe_json_dumps({
+                "success": True,
+                "message": f"Keyword index rebuilt: {result['count']} chunks in {result['elapsed']:.1f}s",
+                "chunks_indexed": result["count"],
+                "elapsed_seconds": round(result["elapsed"], 1)
+            }))]
+
         elif name == "get_corrections":
             # Import corrections tracker
             try:
@@ -6985,7 +7055,7 @@ async def _background_init():
             sys.stderr.write(f"AI Memory MCP: Init attempt {attempt}/{MAX_RETRIES}...\n"); sys.stderr.flush()
             loop = asyncio.get_event_loop()
             await asyncio.wait_for(
-                loop.run_in_executor(_executor, _blocking_init),
+                asyncio.to_thread(_blocking_init),
                 timeout=45.0
             )
 
