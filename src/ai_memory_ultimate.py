@@ -307,9 +307,12 @@ class UltimateMemoryService:
         corrections_found = []
         if CORRECTIONS_ENABLED:
             try:
-                corrections_found = process_conversation_for_corrections(
-                    messages_to_process,
-                    conv_id
+                corrections_found = _run_with_timeout(
+                    lambda: process_conversation_for_corrections(
+                        messages_to_process, conv_id
+                    ),
+                    timeout_sec=_EX_TIMEOUT,
+                    default=[]
                 )
             except Exception as e:
                 print(f"Warning: Correction processing failed: {e}")
@@ -318,10 +321,13 @@ class UltimateMemoryService:
         project_info = {}
         if PROJECT_TRACKING_ENABLED:
             try:
-                project_info = process_conversation_for_projects(
-                    messages_to_process,
-                    conv_id,
-                    file_paths=[fp["path"] for fp in file_paths]
+                project_info = _run_with_timeout(
+                    lambda: process_conversation_for_projects(
+                        messages_to_process, conv_id,
+                        file_paths=[fp["path"] for fp in file_paths]
+                    ),
+                    timeout_sec=_EX_TIMEOUT,
+                    default={}
                 )
             except Exception as e:
                 print(f"Warning: Project tracking failed: {e}")

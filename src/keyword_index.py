@@ -28,6 +28,9 @@ class KeywordIndex:
         """Connect to SQLite database"""
         self.conn = sqlite3.connect(str(self.LOCAL_INDEX_PATH), timeout=10, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        # WAL mode: allows concurrent readers + single writer without blocking.
+        # Prevents deadlocks when zombie MCP server processes hold locks.
+        self.conn.execute("PRAGMA journal_mode=WAL")
         self._ensure_tables()
 
     def _ensure_tables(self):

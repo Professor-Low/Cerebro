@@ -7127,9 +7127,62 @@ async def _background_init():
     _init_event.set()  # Final signal — permanently failed
 
 
+def _cleanup_stale_servers():
+    """Kill zombie cerebro MCP server processes left over from previous sessions.
+
+    On Windows, child processes survive when the parent (Claude Code) exits
+    ungracefully. These zombies hold SQLite file locks, causing ALL MCP tools
+    to deadlock on the next session. This runs once at startup and kills any
+    other 'cerebro.exe serve' processes (keeping only this one).
+    """
+    import subprocess as _sp
+    my_pid = os.getpid()
+    killed = []
+
+    try:
+        if sys.platform == "win32":
+            # Use wmic to find cerebro.exe processes with 'serve' in command line
+            result = _sp.run(
+                ["wmic", "process", "where",
+                 "name='cerebro.exe' and commandline like '%serve%'",
+                 "get", "processid", "/format:list"],
+                capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.strip().split("\n"):
+                line = line.strip()
+                if line.startswith("ProcessId="):
+                    pid = int(line.split("=")[1])
+                    if pid != my_pid:
+                        _sp.run(["taskkill", "/PID", str(pid), "/F"],
+                                capture_output=True, timeout=5)
+                        killed.append(pid)
+        else:
+            # Linux/macOS: find cerebro processes with 'serve' argument
+            result = _sp.run(
+                ["pgrep", "-f", "cerebro.*serve"],
+                capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.strip().split("\n"):
+                line = line.strip()
+                if line.isdigit():
+                    pid = int(line)
+                    if pid != my_pid:
+                        os.kill(pid, 9)
+                        killed.append(pid)
+    except Exception as e:
+        sys.stderr.write(f"[Cleanup] Zombie check failed (non-fatal): {e}\n")
+
+    if killed:
+        sys.stderr.write(f"[Cleanup] Killed {len(killed)} stale MCP server(s): {killed}\n")
+    sys.stderr.flush()
+
+
 async def main():
     """Run the MCP server - accepts connections immediately, initializes in background"""
     global _init_event
+
+    # Kill zombie MCP servers from previous sessions BEFORE doing anything else
+    _cleanup_stale_servers()
 
     sys.stderr.write("AI Memory MCP v2.1: Starting server with GLOBAL 90s TIMEOUT (call_tool v2)...\n")
     sys.stderr.flush()
