@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cerebro-ai"
-version = "0.1.2"
+version = "1.5.3"
 description = "A cognitive memory system for AI agents — 49 MCP tools for persistent memory, causal reasoning, and predictive intelligence"
 readme = "README.md"
 license = "AGPL-3.0-only"

@@ -31,6 +31,12 @@ import sys
 _original_stdout = sys.stdout  # Save for MCP protocol
 sys.stdout = sys.stderr        # All print() now goes to stderr
 
+# Limit OpenMP threads (FAISS/NumPy) — default spawns os.cpu_count() threads
+# which wastes resources in an MCP subprocess that rarely does heavy linear algebra.
+os.environ.setdefault('OMP_NUM_THREADS', '2')
+os.environ.setdefault('MKL_NUM_THREADS', '2')
+os.environ.setdefault('OPENBLAS_NUM_THREADS', '2')
+
 # Embeddings enabled — uses DGX Spark for embedding generation (lazy-loaded, won't block startup)
 os.environ.setdefault('ENABLE_EMBEDDINGS', '1')
 os.environ.setdefault('CEREBRO_DGX_HOST', '')
@@ -362,17 +368,29 @@ def _init_embeddings():
 
 
 async def run_in_thread(func, *args, timeout=NAS_TIMEOUT):
-    """Run blocking function in thread pool with timeout.
-    Uses asyncio.to_thread instead of executor — the global ThreadPoolExecutor
-    can fail in MCP subprocess with 'cannot schedule new futures after interpreter shutdown'.
+    """Run blocking function in a FRESH per-call thread with timeout.
+
+    CRITICAL: Uses a per-call ThreadPoolExecutor(max_workers=1) instead of the
+    shared default executor. When asyncio.wait_for() times out, the orphan thread
+    keeps running and occupies a slot in the shared pool forever. After enough
+    timed-out calls, the pool is full and ALL new to_thread() calls queue forever
+    (thread pool starvation). A per-call executor avoids this — each call gets its
+    own thread, and timed-out executors are discarded without affecting new calls.
     """
+    loop = asyncio.get_running_loop()
+    executor = concurrent.futures.ThreadPoolExecutor(
+        max_workers=1, thread_name_prefix="mcp-tool"
+    )
     try:
         return await asyncio.wait_for(
-            asyncio.to_thread(partial(func, *args)),
+            loop.run_in_executor(executor, partial(func, *args)),
             timeout=timeout
         )
     except asyncio.TimeoutError:
+        executor.shutdown(wait=False, cancel_futures=True)
         raise TimeoutError(f"Operation timed out after {timeout}s")
+    finally:
+        executor.shutdown(wait=False)
 
 
 @server.list_tools()
@@ -2386,20 +2404,34 @@ async def _call_tool_inner(name: str, arguments: dict):
             dgx_result = None
             try:
                 from dgx_search_client import dgx_search, is_dgx_available
-                if await is_dgx_available():
-                    dgx_result = await dgx_search(query, top_k=top_k, mode=mode, alpha=alpha)
+                dgx_avail = await asyncio.wait_for(is_dgx_available(), timeout=5.0)
+                if dgx_avail:
+                    dgx_result = await asyncio.wait_for(
+                        dgx_search(query, top_k=top_k, mode=mode, alpha=alpha),
+                        timeout=10.0
+                    )
+                else:
+                    sys.stderr.write("[Search] DGX not available, using local fallback\n")
+                    sys.stderr.flush()
             except ImportError:
                 pass  # DGX client not available
+            except asyncio.TimeoutError:
+                sys.stderr.write("[Search] DGX check/search timed out, using local fallback\n")
+                sys.stderr.flush()
             except Exception as e:
                 sys.stderr.write(f"[Search] DGX search failed: {e}\n")
+                sys.stderr.flush()
 
-            if dgx_result and dgx_result.get("results"):
-                # DGX search successful - use those results
+            if dgx_result is not None:
+                # DGX responded (even if 0 results) — trust it, don't fall back
+                # to local search which triggers 15s+ TensorFlow model loading.
+                # DGX has the same indexed data, so empty = genuinely no matches.
                 results = dgx_result.get("results", [])
                 results = sanitize_results(results)
                 search_source = "dgx"
                 latency_ms = dgx_result.get("latency_ms", 0)
             else:
+                # DGX truly unavailable (None = connection failed/timeout)
                 # Fall back to local search
                 search_source = "local"
                 latency_ms = None
@@ -2436,9 +2468,9 @@ async def _call_tool_inner(name: str, arguments: dict):
                             recency_decay_days=recency_days
                         )
 
-                # Use asyncio.to_thread — the global _executor can fail in MCP
-                # subprocess with "cannot schedule new futures after interpreter shutdown"
-                results = await asyncio.wait_for(asyncio.to_thread(do_search), timeout=45)
+                # Per-call executor to avoid thread pool starvation from timed-out calls
+                # 15s timeout: DGX is primary path, local is fallback — fail fast
+                results = await run_in_thread(do_search, timeout=15)
 
                 # Short-circuit: do_search can return an error dict
                 if isinstance(results, dict) and "error" in results:
@@ -7053,11 +7085,18 @@ async def _background_init():
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             sys.stderr.write(f"AI Memory MCP: Init attempt {attempt}/{MAX_RETRIES}...\n"); sys.stderr.flush()
-            loop = asyncio.get_event_loop()
-            await asyncio.wait_for(
-                asyncio.to_thread(_blocking_init),
-                timeout=45.0
+            # Use per-call executor — avoids starving the default pool
+            _init_executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="mcp-init"
             )
+            loop = asyncio.get_running_loop()
+            try:
+                await asyncio.wait_for(
+                    loop.run_in_executor(_init_executor, _blocking_init),
+                    timeout=45.0
+                )
+            finally:
+                _init_executor.shutdown(wait=False)
 
             _initialized = True
             _init_event.set()  # Signal waiters that init is complete

@@ -26,7 +26,7 @@ class KeywordIndex:
 
     def _connect(self):
         """Connect to SQLite database"""
-        self.conn = sqlite3.connect(str(self.LOCAL_INDEX_PATH), timeout=10)
+        self.conn = sqlite3.connect(str(self.LOCAL_INDEX_PATH), timeout=10, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self._ensure_tables()
 

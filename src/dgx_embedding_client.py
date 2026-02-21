@@ -17,14 +17,29 @@ Usage:
 """
 
 import asyncio
+import concurrent.futures
 import json
 import os
 import socket
+from functools import partial
 from typing import List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 import numpy as np
+
+
+async def _run_in_fresh_thread(func, *args, timeout=5.0):
+    """Run blocking func in a per-call thread to avoid pool starvation."""
+    loop = asyncio.get_running_loop()
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="dgx-embed")
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(executor, partial(func, *args) if args else func),
+            timeout=timeout
+        )
+    finally:
+        executor.shutdown(wait=False)
 
 # Configuration
 DGX_HOST = os.environ.get("DGX_EMBEDDING_HOST", os.environ.get("CEREBRO_DGX_HOST", ""))
@@ -59,6 +74,8 @@ async def is_dgx_embedding_available() -> bool:
     """
     Check if DGX embedding service is available.
     Caches result for _DGX_CHECK_INTERVAL seconds.
+    Uses per-call ThreadPoolExecutor to avoid thread pool starvation
+    when timed-out calls leave orphan threads in the default pool.
     """
     global _dgx_available, _dgx_check_time
     import time
@@ -67,13 +84,8 @@ async def is_dgx_embedding_available() -> bool:
     if _dgx_available is not None and (now - _dgx_check_time) < _DGX_CHECK_INTERVAL:
         return _dgx_available
 
-    # Run socket check in thread pool
-    loop = asyncio.get_event_loop()
     try:
-        reachable = await asyncio.wait_for(
-            loop.run_in_executor(None, _is_dgx_reachable),
-            timeout=2.0
-        )
+        reachable = await _run_in_fresh_thread(_is_dgx_reachable, timeout=2.0)
 
         if not reachable:
             _dgx_available = False
@@ -81,10 +93,7 @@ async def is_dgx_embedding_available() -> bool:
             return False
 
         # Try health endpoint
-        available = await asyncio.wait_for(
-            loop.run_in_executor(None, _check_health),
-            timeout=3.0
-        )
+        available = await _run_in_fresh_thread(_check_health, timeout=3.0)
 
         _dgx_available = available
         _dgx_check_time = now
@@ -174,16 +183,11 @@ async def dgx_embed(
     if not texts:
         return np.array([], dtype=np.float32)
 
-    loop = asyncio.get_event_loop()
-
     try:
-        result = await asyncio.wait_for(
-            loop.run_in_executor(None, lambda: _do_embed(texts, batch_size, normalize)),
-            timeout=timeout
-        )
+        result = await _run_in_fresh_thread(_do_embed, texts, batch_size, normalize, timeout=timeout)
         return result
 
-    except asyncio.TimeoutError:
+    except (asyncio.TimeoutError, TimeoutError):
         print(f"[DGX Embed] Request timed out after {timeout}s")
         return None
     except Exception as e:
@@ -226,8 +230,6 @@ async def dgx_embed_batch(
 
 async def dgx_embedding_stats() -> Optional[dict]:
     """Get DGX embedding service stats"""
-    loop = asyncio.get_event_loop()
-
     def _get_stats():
         try:
             req = Request(f"{DGX_EMBEDDING_URL}/stats")
@@ -240,11 +242,8 @@ async def dgx_embedding_stats() -> Optional[dict]:
         return None
 
     try:
-        return await asyncio.wait_for(
-            loop.run_in_executor(None, _get_stats),
-            timeout=DGX_TIMEOUT
-        )
-    except asyncio.TimeoutError:
+        return await _run_in_fresh_thread(_get_stats, timeout=DGX_TIMEOUT)
+    except (asyncio.TimeoutError, TimeoutError):
         return None
 
 
