@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install "ruff>=0.1.0"
+        run: pip install "ruff==0.15.0"
       - name: Lint with ruff
         run: ruff check src/
 
