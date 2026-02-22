@@ -44,17 +44,12 @@ def test_ensure_directories(tmp_path):
 
 
 def test_safe_defaults_no_env():
-    """When env vars are unset, code defaults should be empty (safe for PyPI users)."""
-    # These are the CODE defaults — not the env-var overridden values
-    # Professor's machines set env vars so they get 192.168.0.6
-    # Fresh installs get empty strings
+    """When env vars are unset, code defaults should be safe for fresh installs."""
     with patch.dict(os.environ, {}, clear=False):
-        # Re-import to get fresh defaults
         import importlib
         import src.config as cfg
-        # The default in code should be empty string for DGX_HOST
-        # (even if env var overrides on Professor's machines)
-        assert cfg.NAS_IP is not None  # Should exist (empty or set)
+        # NAS_IP should always be defined (empty string for fresh installs)
+        assert cfg.NAS_IP is not None
 
 
 def test_embedding_model_name():

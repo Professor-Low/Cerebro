@@ -48,47 +48,27 @@ docker compose logs -f     # Watch logs
 curl http://localhost:8000/api/health  # Backend health check
 ```
 
-### Option 3: Manual Installation
+### Option 3: Manual Installation (from source)
 
-Step-by-step installation for development or custom setups.
+For development or custom setups.
 
 #### Prerequisites
 
 - Python 3.10+
-- Node.js 18+ (for frontend)
-- Redis (for backend state)
 - Git
 
-#### Memory Server
+#### Steps
 
 ```bash
-cd memory-server
+git clone https://github.com/Professor-Low/Cerebro.git
+cd Cerebro
 python -m venv venv
 source venv/bin/activate  # Linux/macOS
 # or: venv\Scripts\activate  # Windows
 
-pip install -r requirements.txt
-python -m cerebro.server  # Start MCP server
-```
-
-#### Backend
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-#### Frontend
-
-```bash
-cd frontend
-npm install
-npm run build
-npm run preview  # or serve with nginx
+pip install -e ".[dev,embeddings]"
+cerebro init
+cerebro doctor  # Verify installation
 ```
 
 #### Hook Scripts
@@ -524,7 +504,6 @@ echo "Restore complete. Run 'cerebro doctor' to verify."
 
 ```bash
 pip install --upgrade cerebro-ai
-cerebro migrate  # Run any data migrations
 cerebro doctor   # Verify everything works
 ```
 
@@ -570,8 +549,7 @@ sudo systemctl restart cerebro-memory cerebro-backend
 
 | From | To | Migration Required | Notes |
 |------|----|--------------------|-------|
-| 1.x | 2.x | Yes (`cerebro migrate`) | OODA engine restructured, agents replace LLM |
-| 2.0 | 2.1+ | Automatic | Minor schema updates handled on startup |
+| 1.x | 1.x+ | Automatic | Schema updates handled on startup |
 
 ### Rolling Back
 
