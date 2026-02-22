@@ -10,7 +10,7 @@ Detects:
 Promotes them to the `promoted_patterns` section of quick_facts.json
 for immediate recall in future sessions.
 
-Phase 5.3 of Brain Evolution.
+Promotes high-value learnings for fast recall.
 """
 
 import hashlib

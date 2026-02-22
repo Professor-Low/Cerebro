@@ -125,18 +125,18 @@ def run_maintenance(check_only: bool = False, quiet: bool = False) -> Dict:
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
-    # 1. Check NAS connectivity
-    print("\n[1/5] Checking NAS connectivity...")
+    # 1. Check data directory connectivity
+    print("\n[1/5] Checking data directory connectivity...")
     if not BASE_PATH.exists():
-        report["checks"]["nas"] = "UNREACHABLE"
+        report["checks"]["storage"] = "UNREACHABLE"
         report["issues"].append("Data directory unreachable")
         if not quiet:
-            notify_issue("nas_unreachable", "Cannot access data directory - check configuration")
-        print("  FAIL: NAS not accessible")
+            notify_issue("storage_unreachable", "Cannot access data directory - check configuration")
+        print("  FAIL: Data directory not accessible")
         return report
 
-    report["checks"]["nas"] = "OK"
-    print("  OK: NAS accessible")
+    report["checks"]["storage"] = "OK"
+    print("  OK: Data directory accessible")
 
     # 2. Check FAISS index freshness
     print("\n[2/5] Checking FAISS index freshness...")

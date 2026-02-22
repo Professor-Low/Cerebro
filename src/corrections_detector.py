@@ -3,7 +3,7 @@ Correction Detection Engine
 Identifies when user corrects Claude's mistakes.
 
 MULTI-AGENT NOTICE: This is Agent 2's exclusive domain.
-Part of the NAS Cerebral Interface - Learning from Corrections System
+Part of Cerebro AI Memory - Learning from Corrections System
 """
 
 import re

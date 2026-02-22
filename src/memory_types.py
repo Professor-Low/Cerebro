@@ -1,5 +1,5 @@
 """
-Memory Type Definitions - Claude.Me v6.0
+Memory Type Definitions - Cerebro AI Memory
 Distinguishes episodic (what happened) from semantic (general knowledge) memory.
 
 Part of Phase 1: Episodic vs Semantic Separation

@@ -1,7 +1,7 @@
 """
 Self Evaluation - Generate periodic self-improvement reports.
 
-Part of Phase 7: Feedback Loops in the Brain Evolution Plan.
+Generates periodic self-improvement reports from feedback loops.
 
 Generates:
 - Correction rate trends (how often Claude is corrected)

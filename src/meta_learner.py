@@ -1,5 +1,5 @@
 """
-Meta Learner - Claude.Me v6.0
+Meta Learner - Cerebro AI Memory
 Track strategy effectiveness and learn which approaches work best.
 
 Part of Phase 8: Meta-Learning

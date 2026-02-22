@@ -1,5 +1,5 @@
 """
-Strategy Optimizer - Claude.Me v6.0
+Strategy Optimizer - Cerebro AI Memory
 Auto-tune parameters based on meta-learning data.
 
 Part of Phase 8: Meta-Learning

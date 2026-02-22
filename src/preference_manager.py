@@ -4,7 +4,7 @@ Manages user preferences and emotional context extraction.
 
 AGENT 8: TEMPORAL & PREFERENCE INTELLIGENCE
 
-Updated 2026-01-18: Integrated with PreferenceEvolution for Phase 2 Brain Evolution
+Integrated with PreferenceEvolution for preference tracking
 - Timestamps on all preferences
 - Decay detection (90 days → stale)
 - Contradiction detection and supersession

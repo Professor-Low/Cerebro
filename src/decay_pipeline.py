@@ -3,7 +3,7 @@
 Decay Pipeline - Compresses and eventually removes old memories.
 Decay is a feature, not a bug. Forgetting the irrelevant is as important as remembering the important.
 
-Phase 4 of Brain Evolution - Extended to conversations and facts.
+Extended to conversations and facts.
 
 Summary Decay Rules:
 - 0-7 days:   Full summary (200 tokens max)

@@ -97,7 +97,7 @@ class CorrectionsTracker:
         return True
 
     def _validate_with_llm(self, mistake: str, correction: str, context: str, user_message: str) -> object:
-        """Validate correction via DGX Spark LLM. Returns cleaned correction dict, None (rejected), or 'FALLBACK'."""
+        """Validate correction via remote LLM. Returns cleaned correction dict, None (rejected), or 'FALLBACK'."""
         import urllib.error
         import urllib.request
 

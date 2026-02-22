@@ -12,8 +12,8 @@ KEY FEATURES:
 
 Usage:
     tracker = ProjectEvolutionTracker()
-    tracker.record_evolution("cerebral-interface", conversation_id, "Added 3D brain visualization")
-    tracker.mark_superseded("cerebral-interface", "v2", "v3", "Replaced 2D with 3D")
+    tracker.record_evolution("my-project", conversation_id, "Added new feature")
+    tracker.mark_superseded("my-project", "v2", "v3", "Replaced old approach with new")
 """
 
 import json
@@ -63,7 +63,7 @@ class ProjectEvolutionTracker:
         Record a project evolution event.
 
         Args:
-            project_id: Unique project identifier (e.g., "cerebral-interface")
+            project_id: Unique project identifier (e.g., "my-project")
             conversation_id: The conversation where this was discussed
             summary: What changed in this version
             version: Optional version label (auto-generated if not provided)
@@ -531,34 +531,34 @@ if __name__ == "__main__":
 
     # Record some test evolutions
     tracker.record_evolution(
-        "cerebral-interface",
+        "example-app",
         "test-conv-1",
-        "Initial 2D visualization with simple node graph",
+        "Initial REST API with basic CRUD operations",
         version="v1",
-        keywords=["visualization", "2D", "brain", "nodes"]
+        keywords=["api", "rest", "crud", "backend"]
     )
 
     tracker.record_evolution(
-        "cerebral-interface",
+        "example-app",
         "test-conv-2",
-        "Added 3D Force-Directed Graph with Three.js",
+        "Added WebSocket support for real-time updates",
         version="v2",
         supersedes_version="v1",
-        keywords=["visualization", "3D", "brain", "three.js", "force-directed"]
+        keywords=["api", "websocket", "real-time", "backend"]
     )
 
     tracker.record_evolution(
-        "cerebral-interface",
+        "example-app",
         "test-conv-3",
-        "Real-time WebSocket updates with animated search ripples",
+        "Migrated to GraphQL with subscriptions",
         version="v3",
         supersedes_version="v2",
-        keywords=["visualization", "3D", "websocket", "real-time", "animation"]
+        keywords=["api", "graphql", "subscriptions", "backend"]
     )
 
     # Show timeline
     print("\nProject Timeline:")
-    for entry in tracker.get_project_timeline("cerebral-interface"):
+    for entry in tracker.get_project_timeline("example-app"):
         status = "CURRENT" if entry["is_current"] else "SUPERSEDED" if entry["is_superseded"] else ""
         print(f"  {entry['version']}: {entry['summary'][:50]}... [{status}]")
 
@@ -572,9 +572,9 @@ if __name__ == "__main__":
     # Test project matching
     print("\nProject Matching:")
     test_queries = [
-        "How does the cerebral interface visualization work?",
-        "What's the NAS setup?",
-        "Show me the 3D brain graph"
+        "How does the API handle authentication?",
+        "What database is the app using?",
+        "Show me the GraphQL schema"
     ]
     for query in test_queries:
         matched = tracker.find_project_for_query(query)

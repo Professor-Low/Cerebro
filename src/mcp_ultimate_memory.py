@@ -37,7 +37,7 @@ os.environ.setdefault('OMP_NUM_THREADS', '2')
 os.environ.setdefault('MKL_NUM_THREADS', '2')
 os.environ.setdefault('OPENBLAS_NUM_THREADS', '2')
 
-# Embeddings enabled — uses DGX Spark for embedding generation (lazy-loaded, won't block startup)
+# Embeddings enabled — uses remote GPU server for embedding generation (lazy-loaded, won't block startup)
 os.environ.setdefault('ENABLE_EMBEDDINGS', '1')
 os.environ.setdefault('CEREBRO_DGX_HOST', '')
 os.environ.setdefault('DGX_EMBEDDING_HOST', '')
@@ -763,7 +763,7 @@ async def list_tools():
                 }
             }
         ),
-        # Phase 3 & 6 - Brain Evolution: Confidence and Provenance tracking for facts
+        # Confidence and Provenance tracking for facts
         Tool(
             name="confidence",
             description="Manage fact confidence scores and provenance. Actions: stats, get, provenance (full history), reinforce, decay, low, quarantine, source_chain (origin), corrections (correction history), reinforcements (confirmation history), detect_contradictions, contradiction_stats, resolve_contradiction, batch_resolve, pending_contradictions.",
@@ -1241,7 +1241,7 @@ async def list_tools():
         ),
         Tool(
             name="search_by_device",
-            description="Search conversations filtered by device. Use to find content from a specific device (e.g., only DGX Spark conversations).",
+            description="Search conversations filtered by device. Use to find content from a specific device (e.g., only GPU server conversations).",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1251,7 +1251,7 @@ async def list_tools():
                     },
                     "device_tag": {
                         "type": "string",
-                        "description": "Device tag to filter by (e.g., 'dgx_spark', 'windows_pc')"
+                        "description": "Device tag to filter by (e.g., 'gpu_server', 'windows_pc')"
                     },
                     "include_untagged": {
                         "type": "boolean",
@@ -1297,7 +1297,7 @@ async def list_tools():
                 "properties": {
                     "project": {
                         "type": "string",
-                        "description": "Project name (e.g., 'Brain Evolution')"
+                        "description": "Project name (e.g., 'My App')"
                     },
                     "current_phase": {
                         "type": "string",
@@ -2707,7 +2707,7 @@ async def _call_tool_inner(name: str, arguments: dict):
                 return [TextContent(type="text", text=safe_json_dumps({"error": str(e)}))]
 
         elif name == "confidence":
-            # Phase 3 & 6 - Brain Evolution: Confidence and Provenance tracking for facts
+            # Confidence and Provenance tracking for facts
             action = arguments.get("action", "stats")
             try:
                 from confidence_tracker import ConfidenceTracker

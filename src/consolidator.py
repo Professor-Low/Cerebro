@@ -1,5 +1,5 @@
 """
-Consolidator - Claude.Me v6.0
+Consolidator - Cerebro AI Memory
 Background memory consolidation process.
 
 Part of Phase 10: Active Memory Consolidation
@@ -18,7 +18,7 @@ from typing import Dict, List, Optional
 
 import requests
 
-# DGX Spark configuration
+# Remote GPU server configuration
 _dgx_host = os.environ.get("CEREBRO_DGX_HOST", "")
 DGX_CONSOLIDATION_SERVICE = f"http://{_dgx_host}:8769" if _dgx_host else ""
 DGX_TIMEOUT = 120  # Longer timeout for batch processing

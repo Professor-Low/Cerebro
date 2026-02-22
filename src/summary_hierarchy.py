@@ -4,7 +4,7 @@ Summary Hierarchy - Roll up conversation summaries over time.
 Implements daily -> weekly -> monthly summary compression to reduce storage
 while preserving key facts and learnings.
 
-Phase 3.4 of Brain Evolution.
+Compresses summaries over time for storage efficiency.
 """
 
 import json

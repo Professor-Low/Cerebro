@@ -199,17 +199,18 @@ class CodeIndexer:
         # Check topics for project names
         topics = conversation.get('metadata', {}).get('topics', [])
         for topic in topics:
-            if 'project' in topic.lower() or 'cerebral' in topic.lower():
+            if 'project' in topic.lower():
                 return topic
 
-        # Check file paths
+        # Check file paths for project detection
         file_paths = conversation.get('extracted_data', {}).get('file_paths', [])
         for fp in file_paths:
             path = fp.get('path', '')
-            if 'cerebral-interface' in path.lower():
-                return 'cerebral-interface'
-            elif 'nas' in path.lower():
-                return 'nas-projects'
+            # Try to extract project name from path components
+            parts = path.replace('\\', '/').split('/')
+            for part in parts:
+                if part and part not in ('.', '..', 'src', 'lib', 'home', 'Users'):
+                    return part
 
         return None
 

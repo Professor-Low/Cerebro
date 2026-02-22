@@ -1,5 +1,5 @@
 """
-Self Model - Claude.Me v6.0
+Self Model - Cerebro AI Memory
 Track Claude's state during reasoning for continuous self-awareness.
 
 Part of Phase 9: Continuous Self-Modeling

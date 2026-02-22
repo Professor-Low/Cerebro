@@ -1,5 +1,5 @@
 """
-Proactive Retrieval - Claude.Me v6.0
+Proactive Retrieval - Cerebro AI Memory
 Pre-fetch relevant memories based on user goals.
 
 Part of Phase 6: Goal-Directed Memory Access

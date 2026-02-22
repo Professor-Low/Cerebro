@@ -1,5 +1,5 @@
 """
-Goal Tracker - Claude.Me v6.0
+Goal Tracker - Cerebro AI Memory
 Track and infer user goals for proactive memory retrieval.
 
 Part of Phase 6: Goal-Directed Memory Access

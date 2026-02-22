@@ -1,5 +1,5 @@
 """
-Semantic Memory Manager - Claude.Me v6.0
+Semantic Memory Manager - Cerebro AI Memory
 Stores general knowledge abstracted from episodes.
 
 Part of Phase 1: Episodic vs Semantic Separation

@@ -1,5 +1,5 @@
 """
-Reasoning Chain - Claude.Me v6.0
+Reasoning Chain - Cerebro AI Memory
 Represents a chain of thought during problem-solving.
 
 Part of Phase 2: Working Memory Integration

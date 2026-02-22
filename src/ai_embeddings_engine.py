@@ -33,7 +33,7 @@ except ImportError:
     EVOLUTION_TRACKING_ENABLED = False
     print("Warning: project_evolution not found. Recency weighting disabled.")
 
-# Import Confidence Tracker for fact confidence weighting (Phase 3 - Brain Evolution)
+# Import Confidence Tracker for fact confidence weighting (Phase 3)
 try:
     from confidence_tracker import ConfidenceTracker
     CONFIDENCE_TRACKING_ENABLED = True
@@ -1436,7 +1436,7 @@ class EmbeddingsEngine:
                 except Exception as e:
                     print(f"WARNING: Recency boosting failed: {e}")
 
-        # BOOST BY CONFIDENCE (Phase 3 - Brain Evolution)
+        # BOOST BY CONFIDENCE (Phase 3)
         # Facts with higher confidence rank higher in results
         if CONFIDENCE_TRACKING_ENABLED:
             self._ensure_trackers()  # Lazy init with NAS guard
@@ -1562,7 +1562,7 @@ class EmbeddingsEngine:
     def _apply_confidence_weighting(self, results: List[Dict]) -> List[Dict]:
         """
         Apply fact confidence weighting to search results.
-        Phase 3 - Brain Evolution: Facts with higher confidence rank higher.
+        Phase 3: Facts with higher confidence rank higher.
 
         Args:
             results: List of search result dicts

@@ -1,5 +1,5 @@
 """
-Failure Anticipator - Claude.Me v6.0
+Failure Anticipator - Cerebro AI Memory
 Warn about likely failures before they happen.
 
 Part of Phase 7: Predictive Simulation

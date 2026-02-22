@@ -1,5 +1,5 @@
 """
-Episodic Memory Manager - Claude.Me v6.0
+Episodic Memory Manager - Cerebro AI Memory
 Stores events with full context: what happened, when, who was involved, emotional state.
 
 Part of Phase 1: Episodic vs Semantic Separation

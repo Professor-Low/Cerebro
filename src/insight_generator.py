@@ -1,5 +1,5 @@
 """
-Insight Generator - Claude.Me v6.0
+Insight Generator - Cerebro AI Memory
 Detect patterns and generate hypotheses from memory.
 
 Part of Phase 4: Active Reasoning Over Memory

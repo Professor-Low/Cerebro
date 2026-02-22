@@ -1,9 +1,9 @@
 """
-Active Reasoner - Claude.Me v6.0
+Active Reasoner - Cerebro AI Memory
 Form new connections and generate insights without being prompted.
 
 Part of Phase 4: Active Reasoning Over Memory
-Uses DGX Spark for LLM-powered reasoning when available.
+Uses a remote GPU server for LLM-powered reasoning when available.
 """
 import json
 import os
@@ -15,7 +15,7 @@ import requests
 
 from insight_generator import Insight, InsightGenerator, InsightType
 
-# DGX Spark configuration
+# Remote GPU server configuration
 _dgx_host = os.environ.get("CEREBRO_DGX_HOST", "")
 DGX_REASONING_SERVICE = f"http://{_dgx_host}:8768" if _dgx_host else ""
 DGX_TIMEOUT = 45
@@ -166,7 +166,7 @@ class ActiveReasoner:
         return results
 
     def _reason_with_llm(self, memories: List[Dict], context: str = None) -> List[Insight]:
-        """Use DGX Spark LLM for deeper reasoning."""
+        """Use the remote LLM for deeper reasoning."""
         try:
             # Prepare memory summaries
             memory_summaries = []

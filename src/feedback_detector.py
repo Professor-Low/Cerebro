@@ -1,7 +1,7 @@
 """
 Feedback Detector - Auto-detect success/failure signals from conversations.
 
-Part of Phase 7: Feedback Loops in the Brain Evolution Plan.
+Detects success/failure signals for feedback loops.
 
 Detects:
 - Success signals: "It worked!", "Perfect!", "That fixed it!", etc.

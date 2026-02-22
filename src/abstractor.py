@@ -1,5 +1,5 @@
 """
-Abstractor - Claude.Me v6.0
+Abstractor - Cerebro AI Memory
 Create abstractions from episodic memories.
 
 Part of Phase 10: Active Memory Consolidation

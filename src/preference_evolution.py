@@ -1,6 +1,6 @@
 """
 Preference Evolution System
-Phase 2 of Brain Evolution - Makes preferences evolve over time.
+Makes preferences evolve over time.
 
 Features:
 - Timestamps on all preferences (created_at, last_reinforced)

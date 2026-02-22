@@ -90,7 +90,7 @@ class EntityDetector:
         Returns:
             {
                 'tools': ['NAS', 'MCP'],
-                'projects': ['cerebral-interface'],
+                'projects': ['my-web-app'],
                 'file_paths': ['/data/config.json'],
                 'networks': ['10.0.0.100'],
                 'keywords': ['config', 'error'],
@@ -208,7 +208,7 @@ if __name__ == "__main__":
         "Update the config at /path/to/data/config.json",
         "What's my NAS IP address?",
         "How do I configure the MCP server with Docker?",
-        "The cerebral-interface project has a bug in the Python code",
+        "The web-app project has a bug in the Python code",
         "Hello, how are you?",  # Should not trigger
         "Can you help me with my config file setup and database connection?"
     ]

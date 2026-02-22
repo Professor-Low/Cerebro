@@ -1,5 +1,5 @@
 """
-Working Memory Manager - Claude.Me v6.0
+Working Memory Manager - Cerebro AI Memory
 Short-term storage for active reasoning, persists across compactions.
 
 Part of Phase 2: Working Memory Integration

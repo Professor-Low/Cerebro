@@ -1,6 +1,6 @@
 """
 Provenance Tracking System
-Phase 6 of Brain Evolution - Comprehensive tracking of fact origins and history.
+Comprehensive tracking of fact origins and history.
 
 Features:
 - Source chain: Track where each fact came from (conversation, message, type)

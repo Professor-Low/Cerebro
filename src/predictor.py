@@ -1,9 +1,9 @@
 """
-Predictor - Claude.Me v6.0
+Predictor - Cerebro AI Memory
 Use causal model and history for predictions.
 
 Part of Phase 7: Predictive Simulation
-Uses DGX Spark for LLM-powered predictions when available.
+Uses a remote GPU server for LLM-powered predictions when available.
 """
 import hashlib
 import json
@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 
 import requests
 
-# DGX Spark configuration
+# Remote GPU server configuration
 _dgx_host = os.environ.get("CEREBRO_DGX_HOST", "")
 DGX_PREDICTION_SERVICE = f"http://{_dgx_host}:8771" if _dgx_host else ""
 DGX_TIMEOUT = 45

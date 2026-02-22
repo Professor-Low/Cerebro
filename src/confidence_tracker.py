@@ -1,6 +1,6 @@
 """
 Confidence Tracking System
-Phase 3 of Brain Evolution - Meaningful confidence scores for facts.
+Meaningful confidence scores for facts.
 
 Features:
 - Source-based confidence scoring (user explicit = 0.95, inferred = 0.50)

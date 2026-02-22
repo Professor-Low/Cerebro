@@ -1,6 +1,6 @@
 """
 Usage Tracking System
-Phase 4 of Brain Evolution - Track access patterns for intelligent decay.
+Track access patterns for intelligent decay.
 
 Features:
 - Track last_accessed timestamp for facts and conversations

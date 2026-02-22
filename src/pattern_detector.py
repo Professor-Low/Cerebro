@@ -320,7 +320,7 @@ class PatternDetector:
         Returns:
             [
                 {
-                    'project_id': 'cerebral-interface',
+                    'project_id': 'my-project',
                     'last_active': '2025-12-06T...',
                     'days_inactive': 14,
                     'last_topic': 'WebSocket improvements',

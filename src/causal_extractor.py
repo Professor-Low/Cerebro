@@ -1,9 +1,9 @@
 """
-Causal Extractor - Claude.Me v6.0
+Causal Extractor - Cerebro AI Memory
 Extracts cause-effect relationships from conversations.
 
 Part of Phase 3: Causal Model Building
-Uses DGX Spark for LLM-based extraction when available.
+Uses a remote GPU server for LLM-based extraction when available.
 """
 import os
 import re
@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 
 import requests
 
-# DGX Spark configuration
+# Remote GPU server configuration
 _dgx_host = os.environ.get("CEREBRO_DGX_HOST", "")
 DGX_CAUSAL_SERVICE = f"http://{_dgx_host}:8767" if _dgx_host else ""
 DGX_TIMEOUT = 30
@@ -24,7 +24,7 @@ class CausalExtractor:
 
     Uses a combination of:
     1. Pattern matching (fast, local)
-    2. DGX Spark LLM service (accurate, requires network)
+    2. Remote LLM service (accurate, requires network)
     """
 
     # Causal language patterns
@@ -189,7 +189,7 @@ class CausalExtractor:
         return None
 
     def _extract_with_llm(self, text: str) -> List[Dict]:
-        """Extract causal relationships using DGX Spark LLM."""
+        """Extract causal relationships using the remote LLM service."""
         try:
             resp = requests.post(
                 f"{DGX_CAUSAL_SERVICE}/extract",

@@ -76,25 +76,16 @@ class DeviceRegistry:
         device_type = "unknown"
         device_name = hostname
 
-        # Check for known device patterns
-        if "spark" in hostname.lower():
-            device_type = "dgx_spark"
-            device_name = "DGX Spark"
-        elif "gx10" in hostname.lower():
-            device_type = "asus_gx10"
-            device_name = "ASUS GX10"
-        elif hostname.lower() == "archlinux":
-            device_type = "archlinux"
-            device_name = "Arch Linux"
-        elif system == "Windows":
+        # Determine device type based on OS and architecture
+        if system == "Windows":
             device_type = "windows_pc"
             device_name = "Windows PC"
         elif "darwin" in system.lower() or "mac" in hostname.lower():
             device_type = "mac"
             device_name = "Mac"
         elif architecture == "aarch64" and "nvidia" in platform.release().lower():
-            device_type = "dgx_spark"
-            device_name = "DGX Spark"
+            device_type = "gpu_server"
+            device_name = "GPU Server"
         elif system == "Linux":
             device_type = "linux_pc"
             device_name = "Linux PC"
@@ -124,7 +115,7 @@ class DeviceRegistry:
 
         Args:
             device_info: Device info dict (auto-detected if None)
-            friendly_name: Human-friendly name (e.g., "DGX Spark", "Gaming PC")
+            friendly_name: Human-friendly name (e.g., "GPU Server", "Gaming PC")
             description: Description of the device
 
         Returns:
@@ -175,7 +166,7 @@ class DeviceRegistry:
         Used for tagging conversations.
 
         Returns:
-            Device tag like "dgx_spark" or "windows_pc"
+            Device tag like "gpu_server" or "windows_pc"
         """
         device = self.get_current_device()
         return device.get("device_type", "unknown")

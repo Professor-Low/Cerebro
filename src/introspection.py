@@ -1,5 +1,5 @@
 """
-Introspection - Claude.Me v6.0
+Introspection - Cerebro AI Memory
 Monitor reasoning quality and detect issues in real-time.
 
 Part of Phase 9: Continuous Self-Modeling
@@ -14,7 +14,7 @@ from typing import Dict, List
 
 import requests
 
-# DGX Spark configuration
+# Remote GPU server configuration
 _dgx_host = os.environ.get("CEREBRO_DGX_HOST", "")
 DGX_SELF_EVAL_SERVICE = f"http://{_dgx_host}:8770" if _dgx_host else ""
 DGX_TIMEOUT = 30

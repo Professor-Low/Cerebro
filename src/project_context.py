@@ -31,38 +31,18 @@ PROJECT_CONTEXTS = {
             "Test with: python -c 'from mcp_ultimate_memory import *; print(\"OK\")'"
         ],
         "common_issues": [
-            "NAS connectivity - check Z: is mounted",
+            "Network storage connectivity - check data directory is mounted",
             "Embedding model loading timeout",
             "FAISS index corruption"
         ]
     },
-    "cerebral_interface": {
-        "name": "Cerebral Interface",
-        "description": "3D brain visualization using Three.js",
-        "key_files": [
-            "src/App.js",
-            "src/components/Brain.js",
-            "server.js"
-        ],
-        "quick_tips": [
-            "Port 8080 for main, 8081 for WebSocket",
-            "Use 'npm run dev' for development",
-            "Three.js OrbitControls for camera"
-        ]
-    },
-    "lead-gen": {
-        "name": "Lead Generation",
-        "description": "B2B lead generation scrapers",
-        "key_files": [
-            "scrapers/",
-            "enrichment/"
-        ],
-        "quick_tips": [
-            "Check robots.txt before scraping",
-            "Use rate limiting",
-            "Store results in CSV format"
-        ]
-    }
+    # Add your own project contexts here:
+    # "my_project": {
+    #     "name": "My Project",
+    #     "description": "Description of your project",
+    #     "key_files": ["src/main.py"],
+    #     "quick_tips": ["Tip 1", "Tip 2"]
+    # }
 }
 
 

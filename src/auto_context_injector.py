@@ -248,7 +248,7 @@ if __name__ == "__main__":
         "What's my NAS IP address?",
         "Update the config at /data/memory/config.json",
         "How do I configure the MCP server?",
-        "Tell me about the cerebral-interface project",
+        "Tell me about the web-app project",
         "Hello, how are you?"  # Should return None
     ]
 

@@ -76,7 +76,7 @@ except ImportError:
     TEMPORAL_PREFERENCES_ENABLED = False
     print("Warning: Temporal classification and preferences not available")
 
-# Import confidence tracking (Phase 3 - Brain Evolution)
+# Import confidence tracking (Phase 3)
 try:
     from confidence_tracker import ConfidenceSource, ConfidenceTracker
     CONFIDENCE_TRACKING_ENABLED = True
@@ -84,7 +84,7 @@ except ImportError:
     CONFIDENCE_TRACKING_ENABLED = False
     print("Warning: Confidence tracking not available")
 
-# Import privacy filter (Phase 5 - Brain Evolution)
+# Import privacy filter (Phase 5)
 try:
     from privacy_filter import PrivacyFilter, SensitivityLevel
     PRIVACY_FILTER_ENABLED = True
@@ -92,7 +92,7 @@ except ImportError:
     PRIVACY_FILTER_ENABLED = False
     print("Warning: Privacy filter not available")
 
-# Import provenance tracking (Phase 6 - Brain Evolution)
+# Import provenance tracking (Phase 6)
 try:
     from provenance_tracker import LearnedType, ProvenanceTracker, detect_learned_type
     PROVENANCE_TRACKING_ENABLED = True
@@ -141,13 +141,13 @@ class UltimateMemoryService:
             self.temporal_classifier = None
             self.preference_manager = None
 
-        # Initialize confidence tracker if available (Phase 3 - Brain Evolution)
+        # Initialize confidence tracker if available (Phase 3)
         if CONFIDENCE_TRACKING_ENABLED:
             self.confidence_tracker = ConfidenceTracker(base_path=str(self.base_path))
         else:
             self.confidence_tracker = None
 
-        # Initialize privacy filter if available (Phase 5 - Brain Evolution)
+        # Initialize privacy filter if available (Phase 5)
         if PRIVACY_FILTER_ENABLED:
             self.privacy_filter = PrivacyFilter(
                 redact_secrets=True,
@@ -157,7 +157,7 @@ class UltimateMemoryService:
         else:
             self.privacy_filter = None
 
-        # Initialize provenance tracker if available (Phase 6 - Brain Evolution)
+        # Initialize provenance tracker if available (Phase 6)
         if PROVENANCE_TRACKING_ENABLED:
             self.provenance_tracker = ProvenanceTracker(base_path=str(self.base_path))
         else:

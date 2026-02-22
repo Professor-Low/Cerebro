@@ -13,18 +13,13 @@ from typing import Dict, List
 class ProjectStateDetector:
     """Detects project mentions and state changes."""
 
-    # Known project patterns
+    # Known project patterns (examples - users should customize for their projects)
     KNOWN_PROJECTS = {
-        "cerebral-interface": {
-            "names": ["cerebral", "brain", "visualization", "nas-cerebral", "cerebral interface"],
-            "paths": ["NAS-cerebral-interface", "visualization", "cerebral-interface"],
-            "technologies": ["Python", "WebSocket", "Three.js", "FAISS", "sentence-transformers"]
+        "cerebro-mcp": {
+            "names": ["cerebro", "ai memory", "mcp memory", "memory server"],
+            "paths": ["cerebro-mcp", "ai-memory", "cerebro"],
+            "technologies": ["Python", "MCP", "FAISS", "sentence-transformers"]
         },
-        "lead-enrichment": {
-            "names": ["lead enrichment", "scraper", "linkedin"],
-            "paths": ["Scraper", "lead-enrichment"],
-            "technologies": ["Playwright", "PostgreSQL", "Docker"]
-        }
     }
 
     # State change patterns

@@ -1,6 +1,6 @@
 """
 Storage Manager
-Phase 4 of Brain Evolution - Monitor storage sizes and trigger decay.
+Monitor storage sizes and trigger decay.
 
 Features:
 - Track storage size by directory

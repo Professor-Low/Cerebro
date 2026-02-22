@@ -1,5 +1,5 @@
 """
-Causal Model Builder - Claude.Me v6.0
+Causal Model Builder - Cerebro AI Memory
 Stores WHY things happen, enables "what if" reasoning.
 
 Part of Phase 3: Causal Model Building
