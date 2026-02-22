@@ -58,6 +58,18 @@ class PersonalProfileExtractor:
             'username': None
         }
 
+    # Common pronouns/articles that should never be extracted as entities
+    INVALID_EXTRACTIONS = {
+        'she', 'he', 'his', 'her', 'the', 'a', 'an', 'it', 'they', 'them',
+        'you', 'your', 'we', 'our', 'my', 'i'
+    }
+
+    # Regex to detect API keys, tokens, passwords, and other secrets
+    _SECRET_PATTERN = re.compile(
+        r'(sk_|pk_|api_|token_|key_|secret_|password|bearer)\S{10,}',
+        re.IGNORECASE
+    )
+
     def _is_valid_extraction(self, value: str) -> bool:
         """Validate that an extracted value is not garbage.
 
@@ -65,15 +77,41 @@ class PersonalProfileExtractor:
         - Empty or too short/long values
         - Values ending/starting with ellipsis
         - Instruction-like text
+        - Strings that look like API keys/tokens/secrets
+        - Common pronouns/articles
+        - Single characters or pure numbers
+        - Strings with excessive special characters (>30% non-alphanumeric)
         """
-        if not value or len(value) < 3:
+        if not value or len(value) < 2:
             return False
         if len(value) > 100:  # Too long = garbage
             return False
         if value.endswith('...') or value.startswith('...'):
             return False
+
+        # Reject single characters or pure numbers
+        stripped = value.strip()
+        if len(stripped) <= 1:
+            return False
+        if stripped.isdigit():
+            return False
+
+        # Reject common pronouns/articles
+        if stripped.lower() in self.INVALID_EXTRACTIONS:
+            return False
+
+        # Reject strings that look like API keys/tokens/secrets
+        if self._SECRET_PATTERN.search(stripped):
+            return False
+
+        # Reject strings with excessive special characters (>30% non-alphanumeric)
+        if len(stripped) > 0:
+            alnum_count = sum(1 for c in stripped if c.isalnum() or c.isspace())
+            if alnum_count / len(stripped) < 0.7:
+                return False
+
         # Reject instruction-like text
-        lower_val = value.lower()
+        lower_val = stripped.lower()
         if lower_val.startswith(('you to ', 'i want you to', 'please ', 'can you ', 'could you ')):
             return False
         return True
@@ -307,8 +345,10 @@ class PersonalProfileExtractor:
             matches = re.finditer(pattern, text)
             for match in matches:
                 company_name = match.group(1).strip()
-                # Filter out generic words
+                # Filter out generic words and validate extraction
                 if company_name and len(company_name) > 2 and company_name not in ['Company', 'Business']:
+                    if not self._is_valid_extraction(company_name):
+                        continue
                     company = {
                         'name': company_name,
                         'conversation_id': conv_id
@@ -327,6 +367,8 @@ class PersonalProfileExtractor:
             for match in matches:
                 client_name = match.group(1).strip()
                 if client_name and len(client_name) > 2:
+                    if not self._is_valid_extraction(client_name):
+                        continue
                     client = {
                         'name': client_name,
                         'conversation_id': conv_id
@@ -712,23 +754,23 @@ def update_user_profile(conversation_id: str, user_data: Dict[str, Any],
 
 
 def _items_match(item1: Dict, item2: Dict) -> bool:
-    """Check if two items represent the same entity."""
-    # Check by name first
+    """Check if two items represent the same entity (case-insensitive)."""
+    # Check by name first (case-insensitive)
     if 'name' in item1 and 'name' in item2:
-        return item1['name'].lower() == item2['name'].lower()
+        return item1['name'].lower().strip() == item2['name'].lower().strip()
 
-    # Check by preference/goal/dislike text
+    # Check by preference/goal/dislike text (case-insensitive)
     for key in ['preference', 'goal', 'dislike']:
         if key in item1 and key in item2:
             return item1[key].lower().strip() == item2[key].lower().strip()
 
-    # Check by relationship type
+    # Check by relationship type (case-insensitive)
     if 'relationship' in item1 and 'relationship' in item2:
-        return item1['relationship'] == item2['relationship']
+        return item1['relationship'].lower().strip() == item2['relationship'].lower().strip()
 
-    # Check by type (for pets without names)
+    # Check by type (for pets without names, case-insensitive)
     if 'type' in item1 and 'type' in item2 and 'name' not in item1 and 'name' not in item2:
-        return item1['type'] == item2['type']
+        return item1['type'].lower().strip() == item2['type'].lower().strip()
 
     return False
 

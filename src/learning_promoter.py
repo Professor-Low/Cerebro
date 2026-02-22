@@ -259,6 +259,55 @@ class LearningPromoter:
         repeated.sort(key=lambda x: x["use_count"], reverse=True)
         return repeated
 
+    @staticmethod
+    def _solution_word_overlap(solution_a: str, solution_b: str) -> float:
+        """Calculate word overlap ratio between two solution texts.
+
+        Returns a float 0-1 representing how similar the two solutions are
+        based on word set intersection.
+        """
+        if not solution_a or not solution_b:
+            return 0.0
+        words_a = set(solution_a.lower().split())
+        words_b = set(solution_b.lower().split())
+        if not words_a or not words_b:
+            return 0.0
+        intersection = words_a & words_b
+        union = words_a | words_b
+        return len(intersection) / len(union) if union else 0.0
+
+    def _dedup_patterns_by_solution(self, patterns: List[Dict], overlap_threshold: float = 0.8) -> List[Dict]:
+        """Remove patterns whose solution text overlaps >threshold with another.
+
+        When two patterns have highly similar solutions, keep the one with the
+        higher use_count (or occurrence_count).
+        """
+        if not patterns:
+            return patterns
+
+        # Track which indices to keep
+        keep = [True] * len(patterns)
+
+        for i in range(len(patterns)):
+            if not keep[i]:
+                continue
+            for j in range(i + 1, len(patterns)):
+                if not keep[j]:
+                    continue
+                sol_i = patterns[i].get("solution", "")
+                sol_j = patterns[j].get("solution", "")
+                if self._solution_word_overlap(sol_i, sol_j) > overlap_threshold:
+                    # Keep the one with higher use/occurrence count
+                    count_i = patterns[i].get("use_count", 0) or patterns[i].get("occurrence_count", 0)
+                    count_j = patterns[j].get("use_count", 0) or patterns[j].get("occurrence_count", 0)
+                    if count_j > count_i:
+                        keep[i] = False
+                        break  # i is removed, no need to compare further
+                    else:
+                        keep[j] = False
+
+        return [p for p, k in zip(patterns, keep) if k]
+
     def promote_patterns(self, dry_run: bool = True) -> Dict[str, Any]:
         """Detect and promote recurring patterns to quick_facts.
 
@@ -283,6 +332,13 @@ class LearningPromoter:
             for p in self.quick_facts["promoted_patterns"].get("patterns", [])
         }
 
+        # Also collect existing solution texts for content-level dedup
+        existing_solutions = [
+            p.get("solution", "")
+            for p in self.quick_facts["promoted_patterns"].get("patterns", [])
+            if p.get("solution")
+        ]
+
         new_patterns = []
         rejected_count = 0
 
@@ -291,6 +347,15 @@ class LearningPromoter:
             if r["keyword"].lower() not in existing_keywords:
                 # QUALITY GATE: Check solution quality before adding
                 if not self.is_quality_solution(r["best_solution"]):
+                    rejected_count += 1
+                    continue
+
+                # Content-level dedup: skip if solution overlaps >80% with existing
+                is_dup = any(
+                    self._solution_word_overlap(r["best_solution"], existing_sol) > 0.8
+                    for existing_sol in existing_solutions
+                )
+                if is_dup:
                     rejected_count += 1
                     continue
 
@@ -306,6 +371,7 @@ class LearningPromoter:
                     "effectiveness": None  # "high", "medium", "low"
                 })
                 existing_keywords.add(r["keyword"].lower())
+                existing_solutions.append(r["best_solution"])
 
         # Add repeated solutions (with quality gate)
         for s in repeated_solutions[:5]:  # Top 5
@@ -314,6 +380,15 @@ class LearningPromoter:
             if solution_key.lower() not in existing_keywords:
                 # QUALITY GATE: Check solution quality before adding
                 if not self.is_quality_solution(s["solution"]):
+                    rejected_count += 1
+                    continue
+
+                # Content-level dedup: skip if solution overlaps >80% with existing
+                is_dup = any(
+                    self._solution_word_overlap(s["solution"], existing_sol) > 0.8
+                    for existing_sol in existing_solutions
+                )
+                if is_dup:
                     rejected_count += 1
                     continue
 
@@ -328,6 +403,10 @@ class LearningPromoter:
                     "effectiveness": None
                 })
                 existing_keywords.add(solution_key.lower())
+                existing_solutions.append(s["solution"])
+
+        # Dedup new patterns against each other by solution content
+        new_patterns = self._dedup_patterns_by_solution(new_patterns, overlap_threshold=0.8)
 
         result = {
             "recurring_problems_found": len(recurring),

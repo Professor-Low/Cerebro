@@ -1028,6 +1028,16 @@ class UltimateMemoryService:
 
         # === FILTER OUT FALSE POSITIVES ===
 
+        # Secret detection regex - filter out API keys, tokens, passwords
+        _secret_re = re.compile(
+            r'(sk_|pk_|api_|token_|key_|secret_|password|bearer)\S{10,}',
+            re.IGNORECASE
+        )
+
+        def _is_not_secret(value: str) -> bool:
+            """Return True if value does NOT look like a secret/token."""
+            return not _secret_re.search(value)
+
         # Filter invalid people (pronouns, single letters, common words)
         INVALID_PEOPLE = {
             'i', 'me', 'my', 'you', 'your', 'we', 'our', 'they', 'them',
@@ -1037,22 +1047,30 @@ class UltimateMemoryService:
         }
         entities["people"] = {
             p for p in entities["people"]
-            if p.lower() not in INVALID_PEOPLE and len(p) > 1
+            if p.lower() not in INVALID_PEOPLE and len(p) > 1 and _is_not_secret(p)
         }
 
-        # Filter invalid networks (too short, just numbers, common words)
+        # Filter invalid networks (too short, just numbers, common words, secrets)
         entities["networks"] = {
             n for n in entities["networks"]
             if len(n) > 2
             and not n.isdigit()
             and n.lower() not in {'the', 'and', 'for', 'but', 'not'}
+            and _is_not_secret(n)
         }
 
-        # Filter invalid servers
+        # Filter invalid servers (secrets)
         entities["servers"] = {
             s for s in entities["servers"]
             if len(s) > 2 and s.lower() not in {'the', 'a', 'an', 'is'}
+            and _is_not_secret(s)
         }
+
+        # Filter secrets from tools, technologies, companies, os_platforms
+        for category in ["tools", "technologies", "companies", "os_platforms"]:
+            entities[category] = {
+                v for v in entities[category] if _is_not_secret(v)
+            }
 
         # Convert sets to sorted lists
         return {k: sorted(list(v)) for k, v in entities.items()}

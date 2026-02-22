@@ -420,6 +420,23 @@ class SelfEvaluator:
             'action_items': [c for c in candidates if c['recommendation'] == 'promote_to_quick_facts']
         }
 
+    @staticmethod
+    def _solution_word_overlap(solution_a: str, solution_b: str) -> float:
+        """Calculate word overlap ratio between two solution texts.
+
+        Returns a float 0-1 representing how similar the two solutions are
+        based on word set intersection (Jaccard similarity).
+        """
+        if not solution_a or not solution_b:
+            return 0.0
+        words_a = set(solution_a.lower().split())
+        words_b = set(solution_b.lower().split())
+        if not words_a or not words_b:
+            return 0.0
+        intersection = words_a & words_b
+        union = words_a | words_b
+        return len(intersection) / len(union) if union else 0.0
+
     def promote_pattern_to_quick_facts(self,
                                         problem_hash: str,
                                         problem_text: str,
@@ -457,7 +474,7 @@ class SelfEvaluator:
                     'patterns': []
                 }
 
-            # Check if already promoted
+            # Check if already promoted (by hash)
             existing_hashes = {
                 p.get('problem_hash') for p in quick_facts['promoted_patterns']['patterns']
             }
@@ -467,6 +484,17 @@ class SelfEvaluator:
                     'reason': 'Pattern already promoted',
                     'problem_hash': problem_hash
                 }
+
+            # Check if solution content is too similar to an existing pattern (>80% word overlap)
+            for existing_pattern in quick_facts['promoted_patterns']['patterns']:
+                existing_sol = existing_pattern.get('solution', '')
+                if self._solution_word_overlap(solution_text, existing_sol) > 0.8:
+                    return {
+                        'success': False,
+                        'reason': 'Solution too similar to existing promoted pattern',
+                        'problem_hash': problem_hash,
+                        'similar_to': existing_pattern.get('problem_hash', 'unknown')
+                    }
 
             # Add the pattern
             pattern = {
