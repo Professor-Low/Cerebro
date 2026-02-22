@@ -81,6 +81,9 @@ ignore = [
     "N806",
 ]
 
+[tool.ruff.lint.isort]
+known-first-party = ["src", "corrections_tracker", "personality", "config", "ai_memory_ultimate", "ai_embeddings_engine"]
+
 [tool.ruff.lint.per-file-ignores]
 "src/ai_memory_ultimate.py" = ["F401"]
 "src/maintenance/__init__.py" = ["F401"]
