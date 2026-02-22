@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-02-22
+
+### Changed
+- Complete rewrite as `cerebro-ai` PyPI package
+
+### Added
+- Self-evolving memory with confidence scoring and fact provenance
+- Working memory for reasoning continuity across compactions
+- Causal modeling and predictive simulation
+- Meta-learning for retrieval strategy optimization
+- Active memory consolidation (clustering, abstraction, pruning)
+- Multi-device support with device tagging
+- Session handoff system
+- Goal tracking and proactive context
+- Privacy/secret scanning
+- Episodic vs semantic memory separation
+
 ## [1.5.3] - 2026-02-21
 
 ### Fixed
@@ -49,7 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional GPU acceleration for embeddings
 - Redis integration for advanced features
 
-[unreleased]: https://github.com/Professor-Low/Cerebro/compare/v1.5.3...HEAD
+[unreleased]: https://github.com/Professor-Low/Cerebro/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Professor-Low/Cerebro/compare/v1.5.3...v2.0.0
 [1.5.3]: https://github.com/Professor-Low/Cerebro/compare/v0.1.2...v1.5.3
 [0.1.2]: https://github.com/Professor-Low/Cerebro/compare/v0.1.0...v0.1.2
 [0.1.0]: https://github.com/Professor-Low/Cerebro/releases/tag/v0.1.0

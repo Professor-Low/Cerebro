@@ -6,6 +6,8 @@
 
 Cerebro is a modular cognitive platform comprising 4 core components that work together to give AI persistent memory, reasoning, and learning capabilities. It transforms Claude Code from a stateless assistant into a continuously learning system with long-term memory, contextual awareness, and autonomous skill acquisition.
 
+> **Note:** This document describes the full Cerebro ecosystem architecture. This repository provides the memory and knowledge layer (`cerebro-ai`). The Pro desktop application adds the agent platform, browser control, and cognitive loop.
+
 ```mermaid
 flowchart TB
     subgraph User["User Layer"]
