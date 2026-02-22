@@ -67,6 +67,18 @@ Go beyond retrieval into **genuine reasoning**. Cerebro builds causal models and
 
 ---
 
+## See It In Action
+
+<div align="center">
+
+https://github.com/Professor-Low/Cerebro/releases/download/v2.0.0/demo.mp4
+
+</div>
+
+> **Note:** In the demo you'll see Claude Code calling tools prefixed with `ai-memory` — this is just the MCP server name configured in the client. The server is Cerebro. You can name it anything you like in your `mcp.json` config (we recommend `"cerebro"`), and all the tools will show under that name.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
