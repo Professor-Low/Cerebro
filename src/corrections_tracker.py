@@ -13,6 +13,7 @@ propagates to supersede contradicting facts. This prevents
 import hashlib
 import json
 import os
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -221,8 +222,21 @@ If this is NOT a real correction, respond: NO"""
             return None
         elif llm_result == "FALLBACK":
             # DGX unavailable — apply strict regex fallback
-            if len(mistake.split()) < 2 or len(correction.split()) < 3:
-                print(f"Strict regex rejected: {mistake[:30]} -> {correction[:30]}")
+            # Reject single-word mistakes or very short mistakes
+            if len(mistake.split()) < 2 or len(mistake) < 5:
+                print(f"Strict regex rejected (short mistake): {mistake[:30]} -> {correction[:30]}")
+                return None
+            # Reject short corrections
+            if len(correction) < 10:
+                print(f"Strict regex rejected (short correction): {mistake[:30]} -> {correction[:30]}")
+                return None
+            # Reject mistakes that are common English words
+            if mistake.lower().strip() in self.COMMON_WORD_BLOCKLIST:
+                print(f"Strict regex rejected (common word): {mistake[:30]} -> {correction[:30]}")
+                return None
+            # Reject mistakes that look like user queries
+            if '?' in mistake or re.match(r'^(how|what|why|can|does|is)\b', mistake, re.IGNORECASE):
+                print(f"Strict regex rejected (query-like): {mistake[:30]} -> {correction[:30]}")
                 return None
             llm_validated = False
         elif isinstance(llm_result, dict):

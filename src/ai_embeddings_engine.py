@@ -1517,34 +1517,45 @@ class EmbeddingsEngine:
 
         for i, result in enumerate(semantic_results):
             chunk_id = result.get("content", "")[:100]  # Use content snippet as key
+            hybrid_score = alpha * result.get("score", result.get("similarity", 0)) + (1 - alpha) * (1.0 - i / max(len(semantic_results), 1))
             combined[chunk_id] = {
                 **result,
-                "score": alpha * result.get("score", result.get("similarity", 0)) + (1 - alpha) * (1.0 - i / max(len(semantic_results), 1))
+                "similarity_score": hybrid_score,
+                "similarity": hybrid_score,
+                "score": hybrid_score,
             }
 
         for i, result in enumerate(keyword_results):
             chunk_id = result.get("content", "")[:100]
+            kw_score = (1 - alpha) * (1.0 - i / max(len(keyword_results), 1))
             if chunk_id in combined:
-                combined[chunk_id]["score"] += (1 - alpha) * (1.0 - i / max(len(keyword_results), 1))
+                combined[chunk_id]["similarity_score"] += kw_score
+                combined[chunk_id]["similarity"] += kw_score
+                combined[chunk_id]["score"] += kw_score
             else:
                 combined[chunk_id] = {
                     **result,
-                    "score": (1 - alpha) * (1.0 - i / max(len(keyword_results), 1))
+                    "similarity_score": kw_score,
+                    "similarity": kw_score,
+                    "score": kw_score,
                 }
 
         # Sort by combined score
-        results = sorted(combined.values(), key=lambda x: x["score"], reverse=True)
+        results = sorted(combined.values(), key=lambda x: x["similarity_score"], reverse=True)
         return results[:top_k]
 
     def _score_to_confidence(self, similarity: float) -> str:
         """
         Convert similarity score to confidence label.
         AGENT 13: Make confidence scores human-readable.
+        Recalibrated thresholds for real-world score distributions.
         """
-        if similarity >= 0.85:
+        if similarity > 0.3:
             return "HIGH"
-        elif similarity >= 0.70:
+        elif similarity > 0.15:
             return "MEDIUM"
+        elif similarity > 0.05:
+            return "LOW"
         else:
             return "LOW"
 

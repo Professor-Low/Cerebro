@@ -393,6 +393,18 @@ def process_conversation_decay(stats: Dict[str, int]) -> None:
             timestamp = conv.get("timestamp", "")
             age_days = get_age_days(timestamp)
             current_level = conv.get("decay_level", "full")
+
+            # If decay_level was missing, initialize it and write back
+            if "decay_level" not in conv:
+                conv["decay_level"] = "full"
+                current_level = "full"
+                logger.info(f"Initialized missing decay_level to 'full' for conversation {conv.get('id', file_path.stem)}")
+                try:
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        json.dump(conv, f, indent=2, ensure_ascii=False)
+                except Exception as e:
+                    log_debug(f"Error writing decay_level for {file_path}: {e}")
+
             target_level = get_conversation_decay_level(age_days)
 
             # Skip if already at target level

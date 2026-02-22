@@ -475,6 +475,9 @@ class PersonalProfileExtractor:
         # Remove empty categories
         return {k: v for k, v in preferences.items() if v}
 
+    # Stop-phrases that indicate task instructions, not real goals
+    _GOAL_STOP_PHRASES = {"do this", "do that", "try it", "make it", "test it"}
+
     def _extract_goals(self, text: str, conv_id: str) -> List[Dict[str, Any]]:
         """Extract user goals and intentions."""
         goals = []
@@ -489,22 +492,43 @@ class PersonalProfileExtractor:
             matches = re.finditer(pattern, text.lower())
             for match in matches:
                 goal_text = match.group(1).strip()
-                if len(goal_text) > 10:  # Filter out very short matches
-                    # Determine priority based on language intensity
-                    priority = 'medium'
-                    if any(word in goal_text for word in ['must', 'critical', 'essential', 'important', 'need']):
-                        priority = 'high'
-                    elif any(word in goal_text for word in ['would like', 'maybe', 'consider', 'might']):
-                        priority = 'low'
+                # Quality gate: length > 15 chars
+                if len(goal_text) <= 15:
+                    continue
+                # Quality gate: not a question
+                if goal_text.endswith('?'):
+                    continue
+                # Quality gate: alphanumeric ratio > 0.5
+                if len(goal_text) > 0:
+                    alnum_count = sum(1 for c in goal_text if c.isalnum() or c.isspace())
+                    if alnum_count / len(goal_text) <= 0.5:
+                        continue
+                # Quality gate: not a stop-phrase
+                if goal_text.strip() in self._GOAL_STOP_PHRASES:
+                    continue
+                # Quality gate: passes _is_valid_extraction
+                if not self._is_valid_extraction(goal_text):
+                    continue
 
-                    goal = {
-                        'goal': goal_text,
-                        'priority': priority,
-                        'conversation_id': conv_id,
-                        'status': 'active'
-                    }
-                    if goal not in goals:
-                        goals.append(goal)
+                # Determine priority based on language intensity
+                priority = 'medium'
+                if any(word in goal_text for word in ['must', 'critical', 'essential', 'important', 'need']):
+                    priority = 'high'
+                elif any(word in goal_text for word in ['would like', 'maybe', 'consider', 'might']):
+                    priority = 'low'
+
+                goal = {
+                    'goal': goal_text,
+                    'priority': priority,
+                    'conversation_id': conv_id,
+                    'status': 'active'
+                }
+                if goal not in goals:
+                    goals.append(goal)
+
+        # Cap at 30 entries (keep most recent, i.e. last 30)
+        if len(goals) > 30:
+            goals = goals[-30:]
 
         return goals
 
