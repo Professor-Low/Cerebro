@@ -554,8 +554,8 @@ def main():
                 from corrections_tracker import CorrectionsTracker
                 from personality.evolution_engine import PersonalityEvolutionEngine
 
-                evolution_engine = PersonalityEvolutionEngine()
                 corrections_tracker = CorrectionsTracker()
+                evolution_engine = PersonalityEvolutionEngine()
 
                 # Get recent corrections from this session
                 recent_corrections = corrections_tracker.get_recent_corrections(days=1, limit=10)

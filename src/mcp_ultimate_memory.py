@@ -7017,29 +7017,29 @@ def _blocking_init():
     global _memory, _embeddings
     import time as _time
 
-    # FAST-FAIL: Quick NAS check with latency measurement
+    # Determine if NAS is configured at all
+    nas_configured = bool(NAS_IP)
     start = _time.time()
-    nas_available = is_nas_reachable(timeout=2.0)
-    latency_ms = round((_time.time() - start) * 1000)
 
     # Clear startup status banner
     sys.stderr.write("\n")
     sys.stderr.write("=" * 50 + "\n")
 
-    if not nas_available:
-        # NAS unavailable - use local-only mode
-        sys.stderr.write("  AI Memory: NAS OFFLINE - local mode\n")
-        sys.stderr.write("  > record_learning saves locally, syncs later\n")
-        sys.stderr.write("  > search/profile unavailable until NAS online\n")
-        sys.stderr.write("=" * 50 + "\n\n")
-        sys.stderr.flush()
-        _memory = None
-        _embeddings = None
-        return
+    if nas_configured:
+        # NAS is configured — check reachability
+        nas_available = is_nas_reachable(timeout=2.0)
+        latency_ms = round((_time.time() - start) * 1000)
 
-    # NAS available - show status with latency
-    sys.stderr.write(f"  AI Memory: NAS connected ({latency_ms}ms latency)\n")
-    sys.stderr.flush()
+        if nas_available:
+            sys.stderr.write(f"  AI Memory: NAS connected ({latency_ms}ms latency)\n")
+        else:
+            sys.stderr.write("  AI Memory: NAS OFFLINE - local mode\n")
+            sys.stderr.write("  > Using local data directory as fallback\n")
+        sys.stderr.flush()
+    else:
+        # No NAS configured — pure local mode (default for new users)
+        sys.stderr.write("  AI Memory: local mode (no NAS configured)\n")
+        sys.stderr.flush()
 
     # Initialize memory service
     memory_ok = False

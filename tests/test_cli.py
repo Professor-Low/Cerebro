@@ -11,10 +11,11 @@ def test_version():
     )
     assert result.returncode == 0
     assert "cerebro" in result.stdout
+    assert "1.5.3" in result.stdout
 
 
 def test_help():
-    """--help should mention serve, init, doctor."""
+    """--help should mention serve, init, doctor, hooks."""
     result = subprocess.run(
         [sys.executable, "-m", "src.cli", "--help"],
         capture_output=True, text=True, timeout=10,
@@ -23,6 +24,7 @@ def test_help():
     assert "serve" in result.stdout
     assert "init" in result.stdout
     assert "doctor" in result.stdout
+    assert "hooks" in result.stdout
 
 
 def test_unknown_command():

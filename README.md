@@ -115,11 +115,36 @@ Add this to your MCP config (`~/.claude/mcp.json`):
 
 Restart Claude Code and run `/mcp` — you should see 49 Cerebro tools. Start a conversation and Cerebro will automatically begin building your memory.
 
+### 5. Tell Claude How to Use Memory (Recommended)
+
+Add this to your `~/.claude/CLAUDE.md`:
+
+```markdown
+## AI Memory (Cerebro)
+- At session start, call `check_session_continuation` to resume previous work
+- Before answering questions, call `search` to check if relevant memory exists
+- When you solve a problem, call `record_learning` to save the solution
+- Call `get_corrections` to avoid repeating known mistakes
+- Use `update_active_work` before ending a session with pending work
+```
+
+This tells Claude *how* to use the 49 memory tools proactively, instead of waiting for you to ask.
+
+### 6. Install Hooks (Optional)
+
+```bash
+cerebro hooks install
+```
+
+Hooks automate memory at lifecycle events — saving conversations on exit, injecting context on each message, restoring continuity on start. Run `cerebro hooks status` to see what's installed.
+
 ### Health Check
 
 ```bash
 cerebro doctor
 ```
+
+> **Note:** If you installed with `[embeddings]`, the first run downloads a ~438 MB sentence-transformer model. Subsequent starts are instant.
 
 ---
 
@@ -168,6 +193,25 @@ These are the tools you'll use daily. Cerebro has 49 total — here are the high
   <img src="docs/images/cerebro-flow.svg" width="800" alt="Cerebro Pipeline"/>
   <br/><br/>
 </p>
+
+### Your First Conversation
+
+Once Cerebro is connected, try this:
+
+```
+You: "Search my memory for anything about Docker networking"
+Claude: calls search("Docker networking") → finds nothing yet
+
+You: "I just learned that Docker containers on the same network
+       can reach each other by container name, not IP."
+Claude: calls record_learning(solution, ...)
+        → Saved! Next time you ask about Docker networking, this surfaces automatically.
+
+You: "What mistakes have I made before?"
+Claude: calls get_corrections() → shows past corrections so it doesn't repeat them
+```
+
+Every session builds on the last. After a few conversations, Claude knows your projects, preferences, and environment without re-explaining.
 
 ---
 
@@ -369,6 +413,18 @@ Set them in your MCP config:
   }
 }
 ```
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| **First start is slow** | If you installed `[embeddings]`, the sentence-transformer model (~438 MB) downloads on first run. This is a one-time download. |
+| **"No module named 'src'"** | Install via `pip install cerebro-ai`, not by running the source directly. |
+| **MCP tools not showing up** | Check `~/.claude/mcp.json` is valid JSON, restart Claude Code, and run `/mcp` to verify. |
+| **Hook errors blocking Claude** | Hooks should never block — they always output `{"continue": true}`. Check stderr output with `cerebro hooks status`. If a hook is broken, run `cerebro hooks uninstall` to remove all hooks. |
+| **"cerebro: command not found"** | Ensure the pip scripts directory is in your PATH. Try `python -m src.cli serve` as a fallback. |
 
 ---
 
