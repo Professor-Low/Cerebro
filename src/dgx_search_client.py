@@ -20,8 +20,8 @@ import concurrent.futures
 import json
 import os
 import socket
-from typing import Any, Dict, Optional
 from functools import partial
+from typing import Any, Dict, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 

@@ -64,6 +64,7 @@ if _pkg_dir not in sys.path:
 # when importing in a thread pool thread inside a subprocess (Windows issue).
 # These C extensions use the GIL in ways that deadlock if first imported in a worker thread.
 import numpy  # noqa: F401
+
 try:
     import faiss  # noqa: F401
 except ImportError:

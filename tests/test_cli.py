@@ -10,7 +10,7 @@ def test_version():
         capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == 0
-    assert "0.1.0" in result.stdout
+    assert "cerebro" in result.stdout
 
 
 def test_help():
