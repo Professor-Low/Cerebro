@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>Cerebro Social Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1280px;
+    height: 640px;
+    overflow: hidden;
+    font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    background: #0a0812;
+    position: relative;
+  }
+
+  .canvas {
+    width: 1280px;
+    height: 640px;
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(ellipse 80% 60% at 50% 50%, #1a0d3e 0%, #0c081a 60%, #080510 100%);
+  }
+
+  .ambient-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 700px;
+    height: 700px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(150, 0, 255, 0.08) 0%, rgba(100, 0, 255, 0.03) 40%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .grid-overlay {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(150, 0, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(150, 0, 255, 0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 20%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 20%, transparent 70%);
+  }
+
+  .neural-svg {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+
+  .content {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .title {
+    font-size: 96px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    color: #ffffff;
+    text-shadow:
+      0 0 40px rgba(150, 80, 255, 0.5),
+      0 0 80px rgba(120, 0, 255, 0.2);
+    position: relative;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .title-accent {
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #9b59ff, #c084fc, #9b59ff, transparent);
+    border-radius: 2px;
+    box-shadow: 0 0 12px rgba(150, 80, 255, 0.5);
+  }
+
+  .tagline {
+    font-size: 26px;
+    font-weight: 400;
+    color: rgba(210, 180, 255, 0.85);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 20px;
+    margin-bottom: 40px;
+  }
+
+  .features {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .pill {
+    padding: 8px 20px;
+    border: 1px solid rgba(150, 80, 255, 0.3);
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(210, 180, 255, 0.8);
+    letter-spacing: 0.5px;
+    background: rgba(120, 0, 255, 0.08);
+    backdrop-filter: blur(4px);
+  }
+
+  .pill-dot {
+    color: rgba(150, 80, 255, 0.3);
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    pointer-events: none;
+  }
+
+  .vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+  }
+
+  .corner {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    z-index: 12;
+  }
+  .corner-tl { top: 30px; left: 30px; border-top: 2px solid rgba(150, 80, 255, 0.25); border-left: 2px solid rgba(150, 80, 255, 0.25); }
+  .corner-tr { top: 30px; right: 30px; border-top: 2px solid rgba(150, 80, 255, 0.25); border-right: 2px solid rgba(150, 80, 255, 0.25); }
+  .corner-bl { bottom: 30px; left: 30px; border-bottom: 2px solid rgba(150, 80, 255, 0.25); border-left: 2px solid rgba(150, 80, 255, 0.25); }
+  .corner-br { bottom: 30px; right: 30px; border-bottom: 2px solid rgba(150, 80, 255, 0.25); border-right: 2px solid rgba(150, 80, 255, 0.25); }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="ambient-glow"></div>
+  <div class="grid-overlay"></div>
+
+  <svg class="neural-svg" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="3" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="glow-strong" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="6" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="glow-soft" x="-100%" y="-100%" width="300%" height="300%">
+        <feGaussianBlur stdDeviation="12" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+
+      <linearGradient id="brain-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="rgba(180, 100, 255, 0.18)"/>
+        <stop offset="50%" stop-color="rgba(140, 60, 255, 0.28)"/>
+        <stop offset="100%" stop-color="rgba(100, 0, 255, 0.15)"/>
+      </linearGradient>
+    </defs>
+
+    <!-- Brain silhouette -->
+    <g transform="translate(640, 300)" opacity="0.6">
+      <path d="M-8,-120 C-50,-118 -95,-105 -120,-80 C-148,-52 -160,-15 -158,25 C-156,55 -140,85 -118,105 C-95,126 -65,140 -30,145 C-15,147 -8,145 -5,138"
+            fill="none" stroke="url(#brain-grad)" stroke-width="1.5" filter="url(#glow)"/>
+      <path d="M-12,-95 C-42,-90 -75,-78 -95,-58 C-115,-38 -125,-8 -122,22 C-120,48 -108,72 -88,90"
+            fill="none" stroke="rgba(150, 80, 255, 0.1)" stroke-width="1"/>
+      <path d="M-20,-70 C-45,-65 -68,-50 -80,-30 C-92,-10 -90,15 -82,35"
+            fill="none" stroke="rgba(150, 80, 255, 0.08)" stroke-width="1"/>
+      <path d="M8,-120 C50,-118 95,-105 120,-80 C148,-52 160,-15 158,25 C156,55 140,85 118,105 C95,126 65,140 30,145 C15,147 8,145 5,138"
+            fill="none" stroke="url(#brain-grad)" stroke-width="1.5" filter="url(#glow)"/>
+      <path d="M12,-95 C42,-90 75,-78 95,-58 C115,-38 125,-8 122,22 C120,48 108,72 88,90"
+            fill="none" stroke="rgba(150, 80, 255, 0.1)" stroke-width="1"/>
+      <path d="M20,-70 C45,-65 68,-50 80,-30 C92,-10 90,15 82,35"
+            fill="none" stroke="rgba(150, 80, 255, 0.08)" stroke-width="1"/>
+      <path d="M-5,-120 C-3,-125 3,-125 5,-120" fill="none" stroke="rgba(150, 80, 255, 0.2)" stroke-width="1"/>
+      <path d="M-5,138 C-5,155 -2,165 0,175 C2,165 5,155 5,138" fill="none" stroke="rgba(150, 80, 255, 0.12)" stroke-width="1.5"/>
+    </g>
+
+    <!-- Neural network connections -->
+    <g filter="url(#glow)">
+      <line x1="180" y1="180" x2="350" y2="220" stroke="rgba(150, 80, 255, 0.08)" stroke-width="0.5"/>
+      <line x1="180" y1="180" x2="350" y2="300" stroke="rgba(150, 80, 255, 0.06)" stroke-width="0.5"/>
+      <line x1="150" y1="320" x2="350" y2="300" stroke="rgba(150, 80, 255, 0.08)" stroke-width="0.5"/>
+      <line x1="150" y1="320" x2="350" y2="380" stroke="rgba(150, 80, 255, 0.06)" stroke-width="0.5"/>
+      <line x1="200" y1="450" x2="350" y2="380" stroke="rgba(150, 80, 255, 0.08)" stroke-width="0.5"/>
+      <line x1="200" y1="450" x2="350" y2="460" stroke="rgba(150, 80, 255, 0.06)" stroke-width="0.5"/>
+
+      <line x1="350" y1="220" x2="500" y2="250" stroke="rgba(160, 90, 255, 0.1)" stroke-width="0.5"/>
+      <line x1="350" y1="220" x2="500" y2="340" stroke="rgba(160, 90, 255, 0.07)" stroke-width="0.5"/>
+      <line x1="350" y1="300" x2="500" y2="250" stroke="rgba(160, 90, 255, 0.08)" stroke-width="0.5"/>
+      <line x1="350" y1="300" x2="500" y2="340" stroke="rgba(160, 90, 255, 0.1)" stroke-width="0.5"/>
+      <line x1="350" y1="380" x2="500" y2="340" stroke="rgba(160, 90, 255, 0.08)" stroke-width="0.5"/>
+      <line x1="350" y1="380" x2="500" y2="420" stroke="rgba(160, 90, 255, 0.1)" stroke-width="0.5"/>
+      <line x1="350" y1="460" x2="500" y2="420" stroke="rgba(160, 90, 255, 0.08)" stroke-width="0.5"/>
+
+      <line x1="500" y1="250" x2="610" y2="290" stroke="rgba(170, 100, 255, 0.12)" stroke-width="0.7"/>
+      <line x1="500" y1="340" x2="610" y2="310" stroke="rgba(170, 100, 255, 0.15)" stroke-width="0.7"/>
+      <line x1="500" y1="420" x2="610" y2="340" stroke="rgba(170, 100, 255, 0.12)" stroke-width="0.7"/>
+
+      <line x1="670" y1="290" x2="780" y2="250" stroke="rgba(170, 100, 255, 0.12)" stroke-width="0.7"/>
+      <line x1="670" y1="310" x2="780" y2="340" stroke="rgba(170, 100, 255, 0.15)" stroke-width="0.7"/>
+      <line x1="670" y1="340" x2="780" y2="420" stroke="rgba(170, 100, 255, 0.12)" stroke-width="0.7"/>
+
+      <line x1="780" y1="250" x2="930" y2="220" stroke="rgba(160, 90, 255, 0.1)" stroke-width="0.5"/>
+      <line x1="780" y1="250" x2="930" y2="300" stroke="rgba(160, 90, 255, 0.07)" stroke-width="0.5"/>
+      <line x1="780" y1="340" x2="930" y2="300" stroke="rgba(160, 90, 255, 0.1)" stroke-width="0.5"/>
+      <line x1="780" y1="340" x2="930" y2="380" stroke="rgba(160, 90, 255, 0.08)" stroke-width="0.5"/>
+      <line x1="780" y1="420" x2="930" y2="380" stroke="rgba(160, 90, 255, 0.1)" stroke-width="0.5"/>
+      <line x1="780" y1="420" x2="930" y2="460" stroke="rgba(160, 90, 255, 0.07)" stroke-width="0.5"/>
+
+      <line x1="930" y1="220" x2="1100" y2="180" stroke="rgba(150, 80, 255, 0.08)" stroke-width="0.5"/>
+      <line x1="930" y1="300" x2="1100" y2="180" stroke="rgba(150, 80, 255, 0.06)" stroke-width="0.5"/>
+      <line x1="930" y1="300" x2="1130" y2="320" stroke="rgba(150, 80, 255, 0.08)" stroke-width="0.5"/>
+      <line x1="930" y1="380" x2="1130" y2="320" stroke="rgba(150, 80, 255, 0.06)" stroke-width="0.5"/>
+      <line x1="930" y1="380" x2="1080" y2="450" stroke="rgba(150, 80, 255, 0.08)" stroke-width="0.5"/>
+      <line x1="930" y1="460" x2="1080" y2="450" stroke="rgba(150, 80, 255, 0.06)" stroke-width="0.5"/>
+    </g>
+
+    <g opacity="0.4">
+      <line x1="120" y1="140" x2="210" y2="200" stroke="rgba(130,60,255,0.08)" stroke-width="0.4"/>
+      <line x1="100" y1="500" x2="220" y2="430" stroke="rgba(130,60,255,0.06)" stroke-width="0.4"/>
+      <line x1="1160" y1="140" x2="1070" y2="200" stroke="rgba(130,60,255,0.08)" stroke-width="0.4"/>
+      <line x1="1180" y1="500" x2="1060" y2="430" stroke="rgba(130,60,255,0.06)" stroke-width="0.4"/>
+      <line x1="350" y1="220" x2="350" y2="380" stroke="rgba(150,80,255,0.04)" stroke-width="0.3"/>
+      <line x1="930" y1="220" x2="930" y2="380" stroke="rgba(150,80,255,0.04)" stroke-width="0.3"/>
+      <line x1="500" y1="250" x2="500" y2="420" stroke="rgba(150,80,255,0.05)" stroke-width="0.3"/>
+      <line x1="780" y1="250" x2="780" y2="420" stroke="rgba(150,80,255,0.05)" stroke-width="0.3"/>
+    </g>
+
+    <!-- Nodes -->
+    <circle cx="180" cy="180" r="3" fill="rgba(150, 80, 255, 0.4)" filter="url(#glow)"/>
+    <circle cx="150" cy="320" r="3.5" fill="rgba(150, 80, 255, 0.5)" filter="url(#glow)"/>
+    <circle cx="200" cy="450" r="3" fill="rgba(150, 80, 255, 0.4)" filter="url(#glow)"/>
+    <circle cx="120" cy="140" r="2" fill="rgba(140, 60, 255, 0.3)"/>
+    <circle cx="100" cy="500" r="2" fill="rgba(140, 60, 255, 0.25)"/>
+
+    <circle cx="350" cy="220" r="3.5" fill="rgba(160, 90, 255, 0.5)" filter="url(#glow)"/>
+    <circle cx="350" cy="300" r="4" fill="rgba(170, 100, 255, 0.55)" filter="url(#glow)"/>
+    <circle cx="350" cy="380" r="3.5" fill="rgba(160, 90, 255, 0.5)" filter="url(#glow)"/>
+    <circle cx="350" cy="460" r="3" fill="rgba(150, 80, 255, 0.4)" filter="url(#glow)"/>
+
+    <circle cx="500" cy="250" r="4" fill="rgba(175, 110, 255, 0.6)" filter="url(#glow)"/>
+    <circle cx="500" cy="340" r="4.5" fill="rgba(180, 120, 255, 0.65)" filter="url(#glow)"/>
+    <circle cx="500" cy="420" r="4" fill="rgba(175, 110, 255, 0.6)" filter="url(#glow)"/>
+
+    <!-- Center core -->
+    <circle cx="640" cy="300" r="8" fill="rgba(180, 120, 255, 0.15)" filter="url(#glow-soft)"/>
+    <circle cx="640" cy="300" r="5" fill="rgba(190, 130, 255, 0.8)" filter="url(#glow-strong)"/>
+    <circle cx="610" cy="290" r="3.5" fill="rgba(180, 120, 255, 0.7)" filter="url(#glow)"/>
+    <circle cx="670" cy="290" r="3.5" fill="rgba(180, 120, 255, 0.7)" filter="url(#glow)"/>
+    <circle cx="610" cy="340" r="3" fill="rgba(175, 110, 255, 0.6)" filter="url(#glow)"/>
+    <circle cx="670" cy="340" r="3" fill="rgba(175, 110, 255, 0.6)" filter="url(#glow)"/>
+    <circle cx="640" cy="260" r="2.5" fill="rgba(170, 100, 255, 0.5)" filter="url(#glow)"/>
+    <circle cx="640" cy="350" r="2.5" fill="rgba(170, 100, 255, 0.5)" filter="url(#glow)"/>
+    <circle cx="610" cy="310" r="2.5" fill="rgba(175, 110, 255, 0.55)" filter="url(#glow)"/>
+    <circle cx="670" cy="310" r="2.5" fill="rgba(175, 110, 255, 0.55)" filter="url(#glow)"/>
+
+    <circle cx="780" cy="250" r="4" fill="rgba(175, 110, 255, 0.6)" filter="url(#glow)"/>
+    <circle cx="780" cy="340" r="4.5" fill="rgba(180, 120, 255, 0.65)" filter="url(#glow)"/>
+    <circle cx="780" cy="420" r="4" fill="rgba(175, 110, 255, 0.6)" filter="url(#glow)"/>
+
+    <circle cx="930" cy="220" r="3.5" fill="rgba(160, 90, 255, 0.5)" filter="url(#glow)"/>
+    <circle cx="930" cy="300" r="4" fill="rgba(170, 100, 255, 0.55)" filter="url(#glow)"/>
+    <circle cx="930" cy="380" r="3.5" fill="rgba(160, 90, 255, 0.5)" filter="url(#glow)"/>
+    <circle cx="930" cy="460" r="3" fill="rgba(150, 80, 255, 0.4)" filter="url(#glow)"/>
+
+    <circle cx="1100" cy="180" r="3" fill="rgba(150, 80, 255, 0.4)" filter="url(#glow)"/>
+    <circle cx="1130" cy="320" r="3.5" fill="rgba(150, 80, 255, 0.5)" filter="url(#glow)"/>
+    <circle cx="1080" cy="450" r="3" fill="rgba(150, 80, 255, 0.4)" filter="url(#glow)"/>
+    <circle cx="1160" cy="140" r="2" fill="rgba(140, 60, 255, 0.3)"/>
+    <circle cx="1180" cy="500" r="2" fill="rgba(140, 60, 255, 0.25)"/>
+
+    <circle cx="80" cy="250" r="1.5" fill="rgba(130, 50, 255, 0.2)"/>
+    <circle cx="60" cy="380" r="1.5" fill="rgba(130, 50, 255, 0.15)"/>
+    <circle cx="250" cy="130" r="2" fill="rgba(140, 60, 255, 0.2)"/>
+    <circle cx="280" cy="510" r="2" fill="rgba(140, 60, 255, 0.2)"/>
+    <circle cx="1200" cy="250" r="1.5" fill="rgba(130, 50, 255, 0.2)"/>
+    <circle cx="1220" cy="380" r="1.5" fill="rgba(130, 50, 255, 0.15)"/>
+    <circle cx="1030" cy="130" r="2" fill="rgba(140, 60, 255, 0.2)"/>
+    <circle cx="1000" cy="510" r="2" fill="rgba(140, 60, 255, 0.2)"/>
+
+    <!-- Orbital rings -->
+    <ellipse cx="640" cy="305" rx="90" ry="60" fill="none" stroke="rgba(150, 80, 255, 0.04)" stroke-width="0.5" transform="rotate(-5, 640, 305)"/>
+    <ellipse cx="640" cy="305" rx="140" ry="95" fill="none" stroke="rgba(140, 60, 255, 0.03)" stroke-width="0.5" transform="rotate(3, 640, 305)"/>
+    <ellipse cx="640" cy="305" rx="200" ry="130" fill="none" stroke="rgba(130, 40, 255, 0.02)" stroke-width="0.5" transform="rotate(-2, 640, 305)"/>
+
+    <!-- Pulse rings -->
+    <circle cx="640" cy="300" r="25" fill="none" stroke="rgba(170, 100, 255, 0.06)" stroke-width="0.5"/>
+    <circle cx="640" cy="300" r="50" fill="none" stroke="rgba(170, 100, 255, 0.04)" stroke-width="0.5"/>
+    <circle cx="640" cy="300" r="80" fill="none" stroke="rgba(170, 100, 255, 0.025)" stroke-width="0.5"/>
+  </svg>
+
+  <!-- Floating particles -->
+  <div class="particle" style="left: 15%; top: 20%; width: 2px; height: 2px; background: rgba(170,100,255,0.3); box-shadow: 0 0 6px rgba(170,100,255,0.2);"></div>
+  <div class="particle" style="left: 25%; top: 70%; width: 1.5px; height: 1.5px; background: rgba(150,80,255,0.25);"></div>
+  <div class="particle" style="left: 75%; top: 15%; width: 2px; height: 2px; background: rgba(170,100,255,0.3); box-shadow: 0 0 6px rgba(170,100,255,0.2);"></div>
+  <div class="particle" style="left: 85%; top: 65%; width: 1.5px; height: 1.5px; background: rgba(150,80,255,0.25);"></div>
+  <div class="particle" style="left: 10%; top: 55%; width: 1px; height: 1px; background: rgba(140,60,255,0.3);"></div>
+  <div class="particle" style="left: 92%; top: 40%; width: 1px; height: 1px; background: rgba(140,60,255,0.3);"></div>
+  <div class="particle" style="left: 45%; top: 10%; width: 1.5px; height: 1.5px; background: rgba(150,80,255,0.2);"></div>
+  <div class="particle" style="left: 55%; top: 88%; width: 1.5px; height: 1.5px; background: rgba(150,80,255,0.2);"></div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="title">
+      Cerebro
+      <div class="title-accent"></div>
+    </div>
+    <div class="tagline">Autonomous AI Agent Platform</div>
+    <div class="features">
+      <span class="pill">49 MCP Tools</span>
+      <span class="pill-dot">&bull;</span>
+      <span class="pill">Cognitive Memory</span>
+      <span class="pill-dot">&bull;</span>
+      <span class="pill">Multi-Agent Orchestration</span>
+    </div>
+  </div>
+
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+
+  <div class="vignette"></div>
+  <div class="scanlines"></div>
+</div>
+</body>
+</html>
