@@ -70,7 +70,7 @@ Go beyond retrieval into **genuine reasoning**. Cerebro builds causal models and
 ## See It In Action
 
 <div align="center">
-  <img src="docs/images/demo.gif" width="720" alt="Cerebro MCP tools in Claude Code"/>
+  <img src="docs/images/demo.gif" width="900" alt="Cerebro MCP tools in Claude Code"/>
   <br/>
   <sub><a href="https://github.com/Professor-Low/Cerebro/releases/download/v2.0.0/demo.mp4">Watch full demo (1:49)</a></sub>
 </div>
