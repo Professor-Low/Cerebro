@@ -64,7 +64,7 @@ Tools for querying the structured knowledge graph: entities, timelines, files, a
 | `tools` | Docker, Git, Claude Code |
 | `networks` | 10.0.0.0/24 |
 | `people` | User, collaborators |
-| `servers` | NAS, DGX Spark |
+| `servers` | NAS, GPU Server |
 | `technologies` | Python, FastAPI, FAISS |
 
 ---
@@ -82,7 +82,7 @@ Unified tool for episodic and semantic memory operations.
 | `query_episodic` | Find events by date, actor, or emotion | `query`, `date`, `date_range`, `actor`, `emotion` | `memory_type(action="query_episodic", date="2026-02-10", actor="Claude")` |
 | `query_semantic` | Find general facts by domain or keywords | `query`, `domain`, `keywords` | `memory_type(action="query_semantic", domain="infrastructure")` |
 | `save_episodic` | Record a specific event with context | `event` (required), `outcome`, `emotional_state` | `memory_type(action="save_episodic", event="Migrated to FAISS", outcome="success")` |
-| `save_semantic` | Store a general fact | `fact` (required) | `memory_type(action="save_semantic", fact="DGX Spark has 128GB RAM")` |
+| `save_semantic` | Store a general fact | `fact` (required) | `memory_type(action="save_semantic", fact="GPU Server has 128GB RAM")` |
 | `stats` | Get memory statistics | _(none)_ | `memory_type(action="stats")` |
 | `link` | Link an episodic event to a semantic fact | `episode_id`, `semantic_id` | `memory_type(action="link", episode_id="ep_1", semantic_id="sem_1")` |
 
@@ -376,7 +376,7 @@ Device management for multi-device memory.
 |--------|-------------|----------------|---------|
 | `current` | Get current device info | _(none)_ | `device(action="current")` |
 | `all` | List all registered devices | _(none)_ | `device(action="all")` |
-| `register` | Register a new device | `friendly_name`, `description` | `device(action="register", friendly_name="DGX Spark", description="128GB NVIDIA server")` |
+| `register` | Register a new device | `friendly_name`, `description` | `device(action="register", friendly_name="GPU Server", description="128GB NVIDIA server")` |
 
 ### branch
 
