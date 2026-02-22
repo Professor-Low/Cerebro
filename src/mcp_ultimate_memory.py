@@ -187,7 +187,13 @@ def is_nas_reachable(timeout: float = 2.0) -> bool:
     Fast NAS reachability check using socket + filesystem test.
     Socket alone isn't enough - filesystem can hang even when socket works.
     Returns True if NAS is reachable AND filesystem responds, False otherwise.
+    When no NAS is configured (local-only mode), always returns True since
+    data lives on the local filesystem and is always accessible.
     """
+    # No NAS configured — data is local, always reachable
+    if not NAS_IP:
+        return True
+
     import socket
     import threading
 
