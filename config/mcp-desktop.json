@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "cerebro": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-v", "cerebro_cerebro-data:/data/memory",
+        "-e", "AI_MEMORY_PATH=/data/memory",
+        "-e", "CEREBRO_STANDALONE=1",
+        "ghcr.io/professor-low/cerebro-memory:latest",
+        "cerebro", "serve"
+      ],
+      "env": {}
+    }
+  }
+}
