@@ -62,6 +62,9 @@ MCP Config (~/.claude/mcp.json):
     }}
   }}
 
+  If 'cerebro' is not in your PATH, use the full path to the executable.
+  Run 'cerebro init' to auto-detect the correct path for your system.
+
 Environment:
   CEREBRO_DATA_DIR    Base data directory (default: ~/.cerebro/data)
   CEREBRO_LOG_LEVEL   Log level (default: INFO)
@@ -313,17 +316,63 @@ def _init(args):
     print(f"    {DATA_DIR}/cache/")
     print("    ... and 10 more")
     print()
+
+    # Detect the best command for MCP config
+    cerebro_cmd = _resolve_cerebro_command()
+    # Escape backslashes for JSON on Windows
+    cmd_json = cerebro_cmd.replace("\\", "\\\\")
+
     print("Next steps:")
     print('  1. Add to your MCP config (~/.claude/mcp.json):')
-    print('     { "mcpServers": { "cerebro": { "command": "cerebro", "args": ["serve"] } } }')
+    print(f'     {{ "mcpServers": {{ "cerebro": {{ "command": "{cmd_json}", "args": ["serve"] }} }} }}')
     print("  2. Restart Claude Code")
     print("  3. Run /mcp to verify 49 tools are loaded")
     if storage is not None:
         print()
-        print(f"  Note: Set CEREBRO_DATA_DIR={storage} in your MCP config")
+        print(f"  Note: Set CEREBRO_DATA_DIR={storage} in your MCP config env")
         print("  so the server uses this custom path.")
     print()
     print("Done!")
+
+
+def _resolve_cerebro_command():
+    """Find the best command path for MCP config.
+
+    Returns the bare 'cerebro' if it's in PATH, otherwise the absolute path
+    to the executable so MCP servers work regardless of PATH configuration.
+    """
+    import os
+    import shutil
+    import sysconfig
+    from pathlib import Path
+
+    # If 'cerebro' is in PATH, use the bare name (simplest, portable)
+    if shutil.which("cerebro"):
+        return "cerebro"
+
+    # Not in PATH — search known script directories
+    exe_name = "cerebro.exe" if sys.platform == "win32" else "cerebro"
+
+    # Check user scripts directory (pip install --user, or default on Windows)
+    try:
+        user_scripts = sysconfig.get_path("scripts", f"{os.name}_user")
+        candidate = Path(user_scripts) / exe_name
+        if candidate.exists():
+            return str(candidate)
+    except Exception:
+        pass
+
+    # Check system scripts directory
+    try:
+        sys_scripts = sysconfig.get_path("scripts")
+        candidate = Path(sys_scripts) / exe_name
+        if candidate.exists():
+            return str(candidate)
+    except Exception:
+        pass
+
+    # Fallback: bare name and let the user figure it out
+    return "cerebro"
 
 
 def _doctor():
