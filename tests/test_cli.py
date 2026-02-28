@@ -1,6 +1,7 @@
 """Tests for the cerebro CLI entry point."""
 import subprocess
 import sys
+from importlib.metadata import version as pkg_version
 
 
 def test_version():
@@ -11,7 +12,8 @@ def test_version():
     )
     assert result.returncode == 0
     assert "cerebro" in result.stdout
-    assert "3.2.0" in result.stdout
+    expected_version = pkg_version("cerebro-ai")
+    assert expected_version in result.stdout
 
 
 def test_help():
