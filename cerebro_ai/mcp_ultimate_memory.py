@@ -198,35 +198,32 @@ def is_nas_reachable(timeout: float = 2.0) -> bool:
     import threading
 
     # Step 1: Socket check (fast network test)
+    socket_ok = False
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(timeout)
         result = sock.connect_ex((NAS_IP, NAS_SMB_PORT))
         sock.close()
-        if result != 0:
-            return False
+        socket_ok = (result == 0)
     except Exception:
-        return False
+        socket_ok = False
 
-    # Step 2: Actual filesystem test with threading timeout
-    # This catches cases where socket works but SMB file ops hang
+    # Step 2: Filesystem test (catches Docker mounts where socket fails)
     fs_result = [False]
 
     def check_filesystem():
         try:
-            fs_result[0] = AI_MEMORY_BASE.exists()
+            fs_result[0] = AI_MEMORY_BASE.exists() and any(AI_MEMORY_BASE.iterdir())
         except Exception:
             fs_result[0] = False
 
     thread = threading.Thread(target=check_filesystem, daemon=True)
     thread.start()
     thread.join(timeout=timeout)
+    fs_ok = fs_result[0] if not thread.is_alive() else False
 
-    if thread.is_alive():
-        # Filesystem check didn't complete in time - NAS is slow/hanging
-        return False
-
-    return fs_result[0]
+    # Pass if EITHER socket or filesystem works
+    return socket_ok or fs_ok
 
 # Pre-initialized services (loaded at startup)
 _memory = None

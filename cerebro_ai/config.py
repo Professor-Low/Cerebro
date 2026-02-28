@@ -29,7 +29,7 @@ IS_MAC = platform.system() == "Darwin"
 
 # ============== BASE DATA DIRECTORY ==============
 # Accept both CEREBRO_DATA_DIR (internal) and CEREBRO_STORAGE_PATH (docs/user-facing)
-DATA_DIR = Path(os.environ.get("CEREBRO_DATA_DIR", os.environ.get("CEREBRO_STORAGE_PATH", str(Path.home() / ".cerebro" / "data"))))
+DATA_DIR = Path(os.environ.get("CEREBRO_DATA_DIR", os.environ.get("CEREBRO_STORAGE_PATH", os.environ.get("AI_MEMORY_PATH", str(Path.home() / ".cerebro" / "data")))))
 
 # Backward-compatible alias: many modules import AI_MEMORY_BASE
 AI_MEMORY_BASE = DATA_DIR

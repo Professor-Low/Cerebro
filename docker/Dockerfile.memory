@@ -9,11 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy and install
 COPY pyproject.toml README.md ./
-COPY src/ ./src/
+COPY cerebro_ai/ ./cerebro_ai/
 RUN pip install --no-cache-dir .
 
-# Create data directory
-RUN mkdir -p /data
+# Create non-root user for security
+RUN useradd -m -s /bin/bash cerebro
+
+# Create data directory with correct ownership
+RUN mkdir -p /data && chown cerebro:cerebro /data
 
 ENV CEREBRO_DATA_DIR=/data
 
@@ -23,5 +26,7 @@ ENV CEREBRO_DATA_DIR=/data
 # The backend container handles all runtime memory operations.
 COPY docker/entrypoint-memory.sh /entrypoint-memory.sh
 RUN chmod +x /entrypoint-memory.sh
+
+USER cerebro
 
 CMD ["/entrypoint-memory.sh"]

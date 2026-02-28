@@ -91,6 +91,13 @@ class FastHealthChecker:
 
     def _check_nas_socket(self) -> Dict[str, Any]:
         """Socket-only NAS check with latency measurement."""
+        if not self.NAS_IP:
+            return {
+                'status': 'healthy',
+                'note': 'No NAS configured — using local/mounted storage',
+                'ip': '',
+                'port': self.NAS_SMB_PORT
+            }
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(2.0)
