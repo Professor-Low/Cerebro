@@ -11,7 +11,7 @@ def test_version():
     )
     assert result.returncode == 0
     assert "cerebro" in result.stdout
-    assert "3.1.0" in result.stdout
+    assert "3.2.0" in result.stdout
 
 
 def test_help():
