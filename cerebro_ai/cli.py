@@ -10,8 +10,23 @@ import sys
 from . import __version__
 
 
+def _guard_stdio():
+    """Ensure stdout/stderr are never None.
+
+    The distlib exe launcher can set sys.stderr=None in Git Bash on Windows.
+    Any write to a None stream crashes Python silently. Redirect to devnull
+    as a safety net so errors at least don't cause silent exits.
+    """
+    import os
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w")
+
+
 def main():
     """Main CLI dispatcher"""
+    _guard_stdio()
     args = sys.argv[1:]
 
     if not args:
@@ -62,7 +77,16 @@ MCP Config (~/.claude/mcp.json):
     }}
   }}
 
-  If 'cerebro' is not in your PATH, use the full path to the executable.
+  Alternative (works everywhere, no PATH needed):
+  {{
+    "mcpServers": {{
+      "cerebro": {{
+        "command": "python",
+        "args": ["-m", "cerebro_ai", "serve"]
+      }}
+    }}
+  }}
+
   Run 'cerebro init' to auto-detect the correct path for your system.
 
 Environment:

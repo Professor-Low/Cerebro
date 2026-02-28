@@ -1,5 +1,5 @@
 """Smoke tests for cerebro-memory configuration."""
-from src.config import DATA_DIR, get_platform_info
+from cerebro_ai.config import DATA_DIR, get_platform_info
 
 
 def test_data_dir_is_set():

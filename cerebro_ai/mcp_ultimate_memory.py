@@ -7168,9 +7168,14 @@ def _cleanup_stale_servers():
     ungracefully. These zombies hold SQLite file locks, causing ALL MCP tools
     to deadlock on the next session. This runs once at startup and kills any
     other 'cerebro.exe serve' processes (keeping only this one).
+
+    IMPORTANT: On Windows, the distlib exe launcher (cerebro.exe) spawns
+    python.exe as a child. We must never kill the parent launcher (os.getppid())
+    or the Job Object will terminate us too — causing a silent crash.
     """
     import subprocess as _sp
     my_pid = os.getpid()
+    parent_pid = os.getppid()
     killed = []
 
     try:
@@ -7186,7 +7191,7 @@ def _cleanup_stale_servers():
                 line = line.strip()
                 if line.startswith("ProcessId="):
                     pid = int(line.split("=")[1])
-                    if pid != my_pid:
+                    if pid != my_pid and pid != parent_pid:
                         _sp.run(["taskkill", "/PID", str(pid), "/F"],
                                 capture_output=True, timeout=5)
                         killed.append(pid)
@@ -7200,7 +7205,7 @@ def _cleanup_stale_servers():
                 line = line.strip()
                 if line.isdigit():
                     pid = int(line)
-                    if pid != my_pid:
+                    if pid != my_pid and pid != parent_pid:
                         os.kill(pid, 9)
                         killed.append(pid)
     except Exception as e:

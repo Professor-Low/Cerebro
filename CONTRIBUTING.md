@@ -57,7 +57,7 @@ pip install -e ".[dev]"
 pytest
 
 # Lint
-ruff check src/
+ruff check cerebro_ai/
 
 # Run the MCP server locally
 cerebro serve

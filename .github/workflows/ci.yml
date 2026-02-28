@@ -17,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: pip install "ruff==0.15.0"
       - name: Lint with ruff
-        run: ruff check src/
+        run: ruff check cerebro_ai/
 
   test:
     runs-on: ubuntu-latest

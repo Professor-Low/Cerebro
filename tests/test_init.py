@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from src.config import (
+from cerebro_ai.config import (
     DGX_HOST,
     EMBEDDING_DIM,
     EMBEDDING_MODEL,
@@ -14,26 +14,26 @@ from src.config import (
 
 def test_ensure_directories(tmp_path):
     """ensure_directories should create expected subdirs."""
-    with patch("src.config.DATA_DIR", tmp_path):
+    with patch("cerebro_ai.config.DATA_DIR", tmp_path):
         # Patch all derived dirs to use tmp_path
         dirs_to_patch = {
-            "src.config.CONVERSATIONS_DIR": tmp_path / "conversations",
-            "src.config.CACHE_DIR": tmp_path / "cache",
-            "src.config.SUMMARIES_DIR": tmp_path / "cache" / "session_summaries",
-            "src.config.ARCHIVE_DIR": tmp_path / "cache" / "archive",
-            "src.config.EMBEDDINGS_DIR": tmp_path / "embeddings",
-            "src.config.KNOWLEDGE_BASE_DIR": tmp_path / "knowledge_base",
-            "src.config.PROJECTS_DIR": tmp_path / "projects",
-            "src.config.PATTERNS_DIR": tmp_path / "patterns",
-            "src.config.PERSONALITY_DIR": tmp_path / "personality",
-            "src.config.LEARNINGS_DIR": tmp_path / "learnings",
-            "src.config.CORRECTIONS_DIR": tmp_path / "corrections",
-            "src.config.DEVICES_DIR": tmp_path / "devices",
-            "src.config.IMAGES_DIR": tmp_path / "images",
-            "src.config.METRICS_DIR": tmp_path / "metrics",
-            "src.config.BRANCHES_DIR": tmp_path / "branches",
+            "cerebro_ai.config.CONVERSATIONS_DIR": tmp_path / "conversations",
+            "cerebro_ai.config.CACHE_DIR": tmp_path / "cache",
+            "cerebro_ai.config.SUMMARIES_DIR": tmp_path / "cache" / "session_summaries",
+            "cerebro_ai.config.ARCHIVE_DIR": tmp_path / "cache" / "archive",
+            "cerebro_ai.config.EMBEDDINGS_DIR": tmp_path / "embeddings",
+            "cerebro_ai.config.KNOWLEDGE_BASE_DIR": tmp_path / "knowledge_base",
+            "cerebro_ai.config.PROJECTS_DIR": tmp_path / "projects",
+            "cerebro_ai.config.PATTERNS_DIR": tmp_path / "patterns",
+            "cerebro_ai.config.PERSONALITY_DIR": tmp_path / "personality",
+            "cerebro_ai.config.LEARNINGS_DIR": tmp_path / "learnings",
+            "cerebro_ai.config.CORRECTIONS_DIR": tmp_path / "corrections",
+            "cerebro_ai.config.DEVICES_DIR": tmp_path / "devices",
+            "cerebro_ai.config.IMAGES_DIR": tmp_path / "images",
+            "cerebro_ai.config.METRICS_DIR": tmp_path / "metrics",
+            "cerebro_ai.config.BRANCHES_DIR": tmp_path / "branches",
         }
-        with patch.dict("src.config.__dict__", {k.split(".")[-1]: v for k, v in dirs_to_patch.items()}):
+        with patch.dict("cerebro_ai.config.__dict__", {k.split(".")[-1]: v for k, v in dirs_to_patch.items()}):
             ensure_directories()
 
     # At least some subdirs should exist
@@ -47,7 +47,7 @@ def test_safe_defaults_no_env():
     """When env vars are unset, code defaults should be safe for fresh installs."""
     with patch.dict(os.environ, {}, clear=False):
         import importlib
-        import src.config as cfg
+        import cerebro_ai.config as cfg
         # NAS_IP should always be defined (empty string for fresh installs)
         assert cfg.NAS_IP is not None
 

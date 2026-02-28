@@ -6,7 +6,7 @@ from pathlib import Path
 
 def test_hook_source_files_exist():
     """All hook source files should exist in the package."""
-    hooks_dir = Path(__file__).parent.parent / "src" / "hooks"
+    hooks_dir = Path(__file__).parent.parent / "cerebro_ai" / "hooks"
     assert hooks_dir.exists(), f"hooks directory not found at {hooks_dir}"
 
     expected = [
@@ -23,7 +23,7 @@ def test_hook_source_files_exist():
 def test_hooks_command_shows_usage():
     """'cerebro hooks' with no subcommand should show usage."""
     result = subprocess.run(
-        [sys.executable, "-m", "src.cli", "hooks"],
+        [sys.executable, "-m", "cerebro_ai.cli", "hooks"],
         capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == 0
@@ -35,7 +35,7 @@ def test_hooks_command_shows_usage():
 def test_hooks_status():
     """'cerebro hooks status' should run without error."""
     result = subprocess.run(
-        [sys.executable, "-m", "src.cli", "hooks", "status"],
+        [sys.executable, "-m", "cerebro_ai.cli", "hooks", "status"],
         capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == 0
@@ -45,7 +45,7 @@ def test_hooks_status():
 def test_hooks_unknown_subcommand():
     """Unknown hooks subcommand should exit with code 1."""
     result = subprocess.run(
-        [sys.executable, "-m", "src.cli", "hooks", "bogus"],
+        [sys.executable, "-m", "cerebro_ai.cli", "hooks", "bogus"],
         capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == 1

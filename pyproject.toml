@@ -57,10 +57,10 @@ Repository = "https://github.com/Professor-Low/Cerebro"
 Issues = "https://github.com/Professor-Low/Cerebro/issues"
 
 [project.scripts]
-cerebro = "src.cli:main"
+cerebro = "cerebro_ai.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["cerebro_ai"]
 
 [tool.ruff]
 target-version = "py310"
@@ -82,12 +82,12 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src", "corrections_tracker", "personality", "config", "ai_memory_ultimate", "ai_embeddings_engine"]
+known-first-party = ["cerebro_ai", "corrections_tracker", "personality", "config", "ai_memory_ultimate", "ai_embeddings_engine"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/ai_memory_ultimate.py" = ["F401"]
-"src/maintenance/__init__.py" = ["F401"]
-"src/reflection/__init__.py" = ["F401"]
+"cerebro_ai/ai_memory_ultimate.py" = ["F401"]
+"cerebro_ai/maintenance/__init__.py" = ["F401"]
+"cerebro_ai/reflection/__init__.py" = ["F401"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

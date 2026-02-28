@@ -4,32 +4,32 @@ import importlib
 import pytest
 
 CORE_MODULES = [
-    "src.config",
-    "src.cli",
-    "src.validators",
-    "src.corrections_tracker",
-    "src.device_registry",
-    "src.solution_tracker",
-    "src.confidence_tracker",
-    "src.causal_model",
-    "src.goal_tracker",
-    "src.preference_manager",
-    "src.session_continuity",
-    "src.branch_tracker",
-    "src.project_tracker",
-    "src.secret_detector",
-    "src.storage_manager",
-    "src.decay_pipeline",
-    "src.quality_scorer",
+    "cerebro_ai.config",
+    "cerebro_ai.cli",
+    "cerebro_ai.validators",
+    "cerebro_ai.corrections_tracker",
+    "cerebro_ai.device_registry",
+    "cerebro_ai.solution_tracker",
+    "cerebro_ai.confidence_tracker",
+    "cerebro_ai.causal_model",
+    "cerebro_ai.goal_tracker",
+    "cerebro_ai.preference_manager",
+    "cerebro_ai.session_continuity",
+    "cerebro_ai.branch_tracker",
+    "cerebro_ai.project_tracker",
+    "cerebro_ai.secret_detector",
+    "cerebro_ai.storage_manager",
+    "cerebro_ai.decay_pipeline",
+    "cerebro_ai.quality_scorer",
 ]
 
 # These require optional deps or use bare imports needing sys.path setup
 OPTIONAL_MODULES = [
-    "src.ai_embeddings_engine",
-    "src.embedding_service",
-    "src.learning_promoter",
-    "src.working_memory",
-    "src.privacy_filter",
+    "cerebro_ai.ai_embeddings_engine",
+    "cerebro_ai.embedding_service",
+    "cerebro_ai.learning_promoter",
+    "cerebro_ai.working_memory",
+    "cerebro_ai.privacy_filter",
 ]
 
 

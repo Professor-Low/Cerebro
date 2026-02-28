@@ -6,7 +6,7 @@ import sys
 def test_version():
     """--version should print version string and exit 0."""
     result = subprocess.run(
-        [sys.executable, "-m", "src.cli", "--version"],
+        [sys.executable, "-m", "cerebro_ai.cli", "--version"],
         capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == 0
@@ -17,7 +17,7 @@ def test_version():
 def test_help():
     """--help should mention serve, init, doctor, hooks."""
     result = subprocess.run(
-        [sys.executable, "-m", "src.cli", "--help"],
+        [sys.executable, "-m", "cerebro_ai.cli", "--help"],
         capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == 0
@@ -30,7 +30,7 @@ def test_help():
 def test_unknown_command():
     """Unknown command should exit with code 1."""
     result = subprocess.run(
-        [sys.executable, "-m", "src.cli", "nonexistent"],
+        [sys.executable, "-m", "cerebro_ai.cli", "nonexistent"],
         capture_output=True, text=True, timeout=10,
     )
     assert result.returncode == 1
