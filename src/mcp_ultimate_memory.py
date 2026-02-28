@@ -4885,6 +4885,9 @@ async def _call_tool_inner(name: str, arguments: dict):
                 return results
 
             results = await run_in_thread(do_search)
+            # Short-circuit: do_search can return an error dict when NAS is unreachable
+            if isinstance(results, dict) and "error" in results:
+                return [TextContent(type="text", text=safe_json_dumps(results))]
             # Sanitize fact content
             for r in results:
                 if "content" in r:
@@ -4973,6 +4976,9 @@ async def _call_tool_inner(name: str, arguments: dict):
                 return all_paths
 
             all_paths = await run_in_thread(do_find)
+            # Short-circuit: do_find can return an error dict when NAS is unreachable
+            if isinstance(all_paths, dict) and "error" in all_paths:
+                return [TextContent(type="text", text=safe_json_dumps(all_paths))]
             # Sanitize context in file paths
             for p in all_paths:
                 if "context" in p:
@@ -5149,6 +5155,9 @@ async def _call_tool_inner(name: str, arguments: dict):
                 )
 
             results = await run_in_thread(do_search)
+            # Short-circuit: do_search can return an error dict
+            if isinstance(results, dict) and "error" in results:
+                return [TextContent(type="text", text=safe_json_dumps(results))]
             # Sanitize results to prevent terminal rendering issues
             results = sanitize_results(results)
 
@@ -5176,6 +5185,9 @@ async def _call_tool_inner(name: str, arguments: dict):
                 )
 
             results = await run_in_thread(do_search)
+            # Short-circuit: do_search can return an error dict
+            if isinstance(results, dict) and "error" in results:
+                return [TextContent(type="text", text=safe_json_dumps(results))]
             # Sanitize results to prevent terminal rendering issues
             results = sanitize_results(results)
 
@@ -5205,6 +5217,9 @@ async def _call_tool_inner(name: str, arguments: dict):
                 return results
 
             results = await run_in_thread(do_rag)
+            # Short-circuit: do_rag can return an error dict
+            if isinstance(results, dict) and "error" in results:
+                return [TextContent(type="text", text=safe_json_dumps(results))]
             # Sanitize results to prevent terminal rendering issues
             results = sanitize_results(results)
 
@@ -5683,6 +5698,8 @@ async def _call_tool_inner(name: str, arguments: dict):
                     )
 
                 result = await run_in_thread(do_find)
+                if isinstance(result, dict) and "error" in result:
+                    return [TextContent(type="text", text=safe_json_dumps(result))]
                 return [TextContent(type="text", text=safe_json_dumps({"code_snippets": result, "count": len(result)}))]
             except Exception as e:
                 return [TextContent(type="text", text=safe_json_dumps({"error": str(e), "code_snippets": []}))]
@@ -5759,6 +5776,8 @@ async def _call_tool_inner(name: str, arguments: dict):
                     return dedup.find_duplicates(threshold)
 
                 result = await run_in_thread(do_find, timeout=120)  # Longer timeout
+                if isinstance(result, dict) and "error" in result:
+                    return [TextContent(type="text", text=safe_json_dumps(result))]
                 return [TextContent(type="text", text=safe_json_dumps({
                     "duplicates": result[:20],  # Limit to first 20
                     "total_found": len(result)
@@ -5873,6 +5892,8 @@ async def _call_tool_inner(name: str, arguments: dict):
                     limit = arguments.get("limit", 10)
                     return processor.search_images(query, limit)
                 result = await run_in_thread(do_search)
+                if isinstance(result, dict) and "error" in result:
+                    return [TextContent(type="text", text=safe_json_dumps(result))]
                 return [TextContent(type="text", text=safe_json_dumps({"images": result, "count": len(result)}))]
             except Exception as e:
                 return [TextContent(type="text", text=safe_json_dumps({"error": str(e), "images": []}))]
@@ -5922,6 +5943,8 @@ async def _call_tool_inner(name: str, arguments: dict):
                     return manager.get_active_sessions(days_back=days_back)
 
                 result = await run_in_thread(do_get_active)
+                if isinstance(result, dict) and "error" in result:
+                    return [TextContent(type="text", text=safe_json_dumps(result))]
                 return [TextContent(type="text", text=safe_json_dumps({
                     "active_sessions": result,
                     "count": len(result)
@@ -6861,6 +6884,8 @@ async def _call_tool_inner(name: str, arguments: dict):
                     return tracker.find_solution(arguments.get("problem", ""))
 
                 result = await run_in_thread(do_find)
+                if isinstance(result, dict) and "error" in result:
+                    return [TextContent(type="text", text=safe_json_dumps(result))]
                 return [TextContent(type="text", text=safe_json_dumps({
                     "solutions": result[:10],
                     "count": len(result)
@@ -6880,6 +6905,8 @@ async def _call_tool_inner(name: str, arguments: dict):
                     )
 
                 result = await run_in_thread(do_find)
+                if isinstance(result, dict) and "error" in result:
+                    return [TextContent(type="text", text=safe_json_dumps(result))]
                 return [TextContent(type="text", text=safe_json_dumps({
                     "antipatterns": result[:10],
                     "count": len(result),

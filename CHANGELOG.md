@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-02-27
+
+### Fixed
+- 11 MCP tool handlers crash with `slice(None, 10, None)` when NAS is unreachable — dict error responses from `do_search()`/`do_find()` were being iterated and sliced as if they were lists
+- Affected tools: `search_knowledge_base`, `find_file_paths`, `semantic_search`, `hybrid_search`, `get_rag_context`, `find_code`, `find_duplicate_memories`, `search_images`, `get_active_sessions`, `find_solution`, `find_antipatterns`
+- All handlers now short-circuit with a clean error response when the underlying function returns an error dict
+
 ## [2.0.0] - 2026-02-22
 
 ### Changed

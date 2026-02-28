@@ -5,4 +5,4 @@ try:
 
     __version__ = version("cerebro-ai")
 except Exception:
-    __version__ = "2.0.0"
+    __version__ = "3.0.0"
