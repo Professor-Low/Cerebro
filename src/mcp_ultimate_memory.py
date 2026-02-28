@@ -2351,10 +2351,10 @@ async def _call_tool_inner(name: str, arguments: dict):
 
             def do_get_chunk():
                 # Check for regular conversation chunks
-                chunk_file = Path(AI_MEMORY_PATH) / "embeddings" / "chunks" / f"{conversation_id}.jsonl"
+                chunk_file = AI_MEMORY_BASE / "embeddings" / "chunks" / f"{conversation_id}.jsonl"
 
                 # Also check for agent output chunks
-                agent_chunk_file = Path(AI_MEMORY_PATH) / "embeddings" / "chunks" / f"agent-{conversation_id}.jsonl"
+                agent_chunk_file = AI_MEMORY_BASE / "embeddings" / "chunks" / f"agent-{conversation_id}.jsonl"
 
                 target_file = None
                 if chunk_file.exists():

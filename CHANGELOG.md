@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-02-27
+
+### Fixed
+- `get_chunk` tool crashes with `NameError: AI_MEMORY_PATH` — replaced with `AI_MEMORY_BASE` (already imported from config)
+- Docker entrypoint reads wrong env var `AI_MEMORY_PATH` instead of `CEREBRO_DATA_DIR`, defaults to `/data/memory` instead of `/data`
+- Docker entrypoint directory list mismatched with `config.py:ensure_directories()` — now creates the same directories Python expects
+- `config/mcp-desktop.json` used broken Docker config with incorrect env vars — replaced with native `cerebro serve` config
+
 ## [3.0.0] - 2026-02-27
 
 ### Fixed
