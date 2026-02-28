@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Dict, List
 
 import requests
-
 from insight_generator import Insight, InsightGenerator, InsightType
 
 # Remote GPU server configuration

@@ -6,6 +6,7 @@ Part of the NAS Cerebral Interface - Learning from Corrections System
 """
 
 from corrections_detector import CorrectionDetector
+
 from corrections_tracker import CorrectionsTracker
 
 

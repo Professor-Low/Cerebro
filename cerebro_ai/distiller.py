@@ -12,8 +12,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-from config import IDENTITY_CACHE, LOG_DIR, SUMMARIES_DIR
 from content_filter import filter_messages_for_extraction, get_message_hash, is_system_generated_content
+
+from config import IDENTITY_CACHE, LOG_DIR, SUMMARIES_DIR
 
 # Cache location (from config.py for cross-platform support)
 DEBUG_LOG = LOG_DIR / "distiller_debug.log"
